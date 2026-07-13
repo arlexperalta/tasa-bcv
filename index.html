@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>Tasa BCV · Bolívares a dólares y euros</title>
-<meta name="description" content="Convierte bolívares a dólares y euros con la tasa oficial del BCV." />
+<meta name="description" content="Convierte bolívares a dólares y euros con la tasa oficial del BCV, y USDT con la tasa de Binance P2P." />
 <meta name="theme-color" content="#2e3136" />
 <meta name="color-scheme" content="dark" />
 <link rel="manifest" href="/manifest.json" />
@@ -69,14 +69,14 @@
 
   /* toggle dólar / euro */
   .switch {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
     background: var(--track); border-radius: 12px; padding: 4px;
     margin-bottom: 20px;
   }
   .switch button {
     appearance: none; border: 0; cursor: pointer; background: transparent;
-    font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--muted);
-    padding: 12px; border-radius: 9px; transition: background .18s, color .18s;
+    font-family: var(--display); font-size: 15px; font-weight: 600; color: var(--muted);
+    padding: 12px 6px; border-radius: 9px; transition: background .18s, color .18s;
   }
   .switch button[aria-selected="true"] {
     background: var(--pill); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.25);
@@ -94,7 +94,7 @@
   .rate .r input {
     font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums;
-    border: 0; background: transparent; width: 5.6ch; text-align: right;
+    border: 0; background: transparent; width: 8ch; text-align: right;
     padding: 2px 0; outline: none; border-bottom: 1.5px solid transparent;
   }
   .rate .r input:focus { border-bottom-color: var(--accent); }
@@ -149,10 +149,11 @@
   <div class="switch" role="tablist" aria-label="Moneda">
     <button role="tab" data-cur="USD" aria-selected="true">Dólar $</button>
     <button role="tab" data-cur="EUR" aria-selected="false">Euro €</button>
+    <button role="tab" data-cur="USDT" aria-selected="false">USDT</button>
   </div>
 
   <div class="rate">
-    <span class="l"><span class="dot" id="live"></span> Tasa del día · BCV</span>
+    <span class="l"><span class="dot" id="live"></span> <span id="rateLabel">Tasa del día · BCV</span></span>
     <span class="r" id="rateWrap">
       <input id="rate" inputmode="decimal" aria-label="Tasa en bolívares" />
       <span class="u">Bs</span>
@@ -180,7 +181,7 @@
   <footer>
     <div class="foot-row">
       <div class="credits">
-        <div>Tasa oficial del BCV · vía dolarapi</div>
+        <div id="srcLine">Tasa oficial del BCV · vía dolarapi</div>
         <div class="brand">Hecho por <b>Arlex Peralta</b> · <a href="https://arlexperalta.com" target="_blank" rel="noopener">arlexperalta.com</a></div>
         <button class="reset-rate" id="resetRate" hidden>Volver a la tasa BCV</button>
       </div>
@@ -198,14 +199,21 @@
   const API = {
     USD: "https://ve.dolarapi.com/v1/dolares/oficial",
     EUR: "https://ve.dolarapi.com/v1/euros/oficial",
+    USDT: "https://criptoya.com/api/binancep2p/USDT/VES/100",
   };
-  const META = { USD: { sym: "$", label: "Dólares" }, EUR: { sym: "€", label: "Euros" } };
+  const META = {
+    USD: { sym: "$", label: "Dólares", rate: "Tasa del día · BCV", src: "Tasa oficial del BCV · vía dolarapi" },
+    EUR: { sym: "€", label: "Euros", rate: "Tasa del día · BCV", src: "Tasa oficial del BCV · vía dolarapi" },
+    USDT: { sym: "$", label: "USDT", rate: "Binance P2P · promedio", src: "Binance P2P · vía CriptoYa" },
+  };
+  const CURS = ["USD", "EUR", "USDT"];
   const LS = "tasa.arlexperalta.v1";
 
   const fmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const $ = (id) => document.getElementById(id);
   const els = {
     live: $("live"), fecha: $("fecha"), rate: $("rate"), rateWrap: $("rateWrap"),
+    rateLabel: $("rateLabel"), srcLine: $("srcLine"),
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
     resetRate: $("resetRate"),
@@ -271,7 +279,9 @@
     const m = META[cur];
     els.fxSym.textContent = m.sym;
     els.fxLabel.textContent = m.label;
-    els.fx.setAttribute("aria-label", "Monto en " + m.label.toLowerCase());
+    els.rateLabel.textContent = m.rate;
+    els.srcLine.textContent = m.src;
+    els.fx.setAttribute("aria-label", "Monto en " + (cur === "USDT" ? m.label : m.label.toLowerCase()));
     els.tabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cur === cur)));
     rateOverride = store.override && store.override[cur] != null ? store.override[cur] : null;
     paintRate(); recompute();
@@ -280,7 +290,7 @@
   function applyCached() {
     if (store.official) {
       official = {};
-      for (const k of ["USD", "EUR"]) if (store.official[k]) official[k] = { ...store.official[k], fresh: false };
+      for (const k of CURS) if (store.official[k]) official[k] = { ...store.official[k], fresh: false };
     }
   }
 
@@ -291,26 +301,37 @@
     catch { return ""; }
   }
 
+  async function fetchOne(k) {
+    const res = await fetch(API[k], { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+    let valor, fecha;
+    if (k === "USDT") {
+      valor = (Number(d.ask) + Number(d.bid)) / 2;
+      fecha = fmtFecha(d.time * 1000);
+    } else {
+      valor = Number(d.promedio ?? d.venta ?? d.compra);
+      fecha = fmtFecha(d.fechaActualizacion);
+    }
+    if (!isFinite(valor) || valor <= 0) throw new Error("sin valor");
+    return { valor, fecha, fresh: true };
+  }
+
   async function fetchRates(manual) {
     els.refresh.classList.add("spin"); els.live.classList.remove("on");
-    try {
-      const out = {};
-      await Promise.all(["USD", "EUR"].map(async (k) => {
-        const res = await fetch(API[k], { cache: "no-store" });
-        if (!res.ok) throw new Error(res.status);
-        const d = await res.json();
-        const valor = Number(d.promedio ?? d.venta ?? d.compra);
-        if (!isFinite(valor)) throw new Error("sin valor");
-        out[k] = { valor, fecha: fmtFecha(d.fechaActualizacion), fresh: true };
-      }));
-      official = out;
-      store.official = { USD: strip(out.USD), EUR: strip(out.EUR) };
+    const results = await Promise.allSettled(CURS.map(fetchOne));
+    let any = false;
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") { official[CURS[i]] = r.value; any = true; }
+    });
+    if (any) {
+      store.official = {};
+      for (const k of CURS) store.official[k] = strip(official[k]);
       save();
-    } catch (e) {
-      if (manual) { els.fecha.textContent = "sin conexión"; setTimeout(paintRate, 2000); }
-    } finally {
-      els.refresh.classList.remove("spin"); paintRate(); recompute();
+    } else if (manual) {
+      els.fecha.textContent = "sin conexión"; setTimeout(paintRate, 2000);
     }
+    els.refresh.classList.remove("spin"); paintRate(); recompute();
   }
 
   els.tabs.forEach((b) => b.addEventListener("click", () => {
@@ -333,7 +354,7 @@
   });
   els.refresh.addEventListener("click", () => fetchRates(true));
 
-  cur = store.cur === "EUR" ? "EUR" : "USD";
+  cur = CURS.includes(store.cur) ? store.cur : "USD";
   applyCached(); paintCurrency(); fetchRates(false);
 })();
 </script>
