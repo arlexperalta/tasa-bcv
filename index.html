@@ -294,7 +294,11 @@
     els.resetRate.hidden = rateOverride == null;
     const o = official[cur];
     if (rateOverride != null) { els.fecha.textContent = "tasa manual"; els.live.classList.remove("on"); }
-    else if (o) { els.fecha.textContent = o.fecha || "guardada"; els.live.classList.toggle("on", !!o.fresh); }
+    else if (o) {
+      const f = [o.fecha, o.hora].filter(Boolean).join(" · ");
+      els.fecha.textContent = f || "guardada";
+      els.live.classList.toggle("on", !!o.fresh);
+    }
     else { els.fecha.textContent = "escribe la tasa"; els.live.classList.remove("on"); }
   }
 
@@ -349,11 +353,20 @@
     }
   }
 
-  const strip = (o) => o ? { valor: o.valor, fecha: o.fecha } : null;
+  const strip = (o) => o ? { valor: o.valor, fecha: o.fecha, hora: o.hora } : null;
 
+  // fecha-valor que publica la fuente (dolarapi manda medianoche, sin hora real)
   function fmtFecha(iso) {
-    try { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { day: "numeric", month: "long" }); }
+    try { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { day: "numeric", month: "short" }).replace(".", ""); }
     catch { return ""; }
+  }
+
+  // hora local del momento en que la app consultó la tasa con éxito
+  function fmtHora(d) {
+    let h = d.getHours();
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const ap = h >= 12 ? "pm" : "am";
+    return (h % 12 || 12) + ":" + min + " " + ap;
   }
 
   async function fetchOne(k) {
@@ -369,7 +382,7 @@
       fecha = fmtFecha(d.fechaActualizacion);
     }
     if (!isFinite(valor) || valor <= 0) throw new Error("sin valor");
-    return { valor, fecha, fresh: true };
+    return { valor, fecha, hora: fmtHora(new Date()), fresh: true };
   }
 
   async function fetchRates(manual) {
