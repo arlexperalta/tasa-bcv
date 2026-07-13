@@ -112,6 +112,14 @@
     border: 0; background: transparent; outline: none; padding: 0;
   }
   .field input.amt::placeholder { color: var(--faint); font-weight: 500; }
+  .field .clear {
+    appearance: none; border: 0; cursor: pointer; flex: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--pill); color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .field .clear:active { color: var(--text); }
+  .field .clear svg { width: 13px; height: 13px; }
   .field .sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); margin-top: 8px; min-height: 15px; }
 
   /* pie */
@@ -165,6 +173,7 @@
     <div class="row">
       <span class="cur">Bs</span>
       <input id="bs" class="amt" inputmode="decimal" placeholder="0,00" aria-label="Monto en bolívares" />
+      <button class="clear" id="bsClear" aria-label="Borrar montos" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="sub" id="bsSub"></div>
   </div>
@@ -174,6 +183,7 @@
     <div class="row">
       <span class="cur" id="fxSym">$</span>
       <input id="fx" class="amt" inputmode="decimal" placeholder="0,00" aria-label="Monto en moneda extranjera" />
+      <button class="clear" id="fxClear" aria-label="Borrar montos" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="sub" id="fxSub"></div>
   </div>
@@ -216,6 +226,7 @@
     rateLabel: $("rateLabel"), srcLine: $("srcLine"),
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
+    bsClear: $("bsClear"), fxClear: $("fxClear"),
     resetRate: $("resetRate"),
     tabs: Array.from(document.querySelectorAll(".switch button")),
   };
@@ -257,7 +268,7 @@
 
   function recompute() {
     const r = currentRate();
-    if (!isFinite(r) || r <= 0) { els.bsSub.textContent = els.fxSub.textContent = ""; return; }
+    if (!isFinite(r) || r <= 0) { els.bsSub.textContent = els.fxSub.textContent = ""; updateClears(); return; }
     if (last === "bs") {
       const bs = parse(els.bs.value);
       if (isFinite(bs)) {
@@ -273,6 +284,18 @@
         els.bsSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym;
       } else { els.bs.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
     }
+    updateClears();
+  }
+
+  function updateClears() {
+    const empty = !els.bs.value && !els.fx.value;
+    els.bsClear.hidden = els.fxClear.hidden = empty;
+  }
+
+  function clearAmounts(target) {
+    els.bs.value = els.fx.value = "";
+    els.bsSub.textContent = els.fxSub.textContent = "";
+    updateClears(); target.focus();
   }
 
   function paintCurrency() {
@@ -352,6 +375,8 @@
     rateOverride = null; if (store.override) { delete store.override[cur]; save(); }
     paintRate(); recompute();
   });
+  els.bsClear.addEventListener("click", () => clearAmounts(els.bs));
+  els.fxClear.addEventListener("click", () => clearAmounts(els.fx));
   els.refresh.addEventListener("click", () => fetchRates(true));
 
   cur = CURS.includes(store.cur) ? store.cur : "USD";

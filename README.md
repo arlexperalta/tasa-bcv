@@ -9,6 +9,7 @@ Calculadora de cambio para Venezuela. Convierte bolívares a dólares y euros co
 - Trae sola la tasa oficial del BCV de **dólar** y **euro**, y la de **Binance P2P** para USDT, al abrir.
 - Convierte en ambos sentidos: escribes en bolívares o en la moneda, y el otro campo se calcula solo.
 - Formato venezolano (`1.000.000,00`).
+- Botón para borrar los montos de un toque y empezar de cero.
 - Tasa **editable a mano** por si prefieres otra, con un toque para volver a la del BCV.
 - **Funciona sin internet** con la última tasa guardada.
 - Pensada para usarse en el teléfono: campos grandes, lectura clara.
