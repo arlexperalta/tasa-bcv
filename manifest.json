@@ -1,0 +1,27 @@
+{
+  "name": "Tasa BCV · Calculadora de cambio",
+  "short_name": "Tasa BCV",
+  "description": "Convierte bolívares a dólares y euros con la tasa oficial del BCV.",
+  "lang": "es-VE",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2e3136",
+  "theme_color": "#2e3136",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
