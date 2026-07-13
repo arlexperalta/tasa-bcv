@@ -122,6 +122,17 @@
   .field .clear svg { width: 13px; height: 13px; }
   .field .sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); margin-top: 8px; min-height: 15px; }
 
+  /* montos rápidos */
+  .chips { display: flex; gap: 6px; margin-top: 10px; }
+  .chips button {
+    flex: 1; appearance: none; border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums;
+    color: var(--muted); background: var(--track);
+    padding: 9px 0; border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .chips button[aria-pressed="true"], .chips button:active { background: var(--pill); color: var(--text); }
+
   /* pie */
   footer { margin-top: auto; padding-top: 22px; }
   .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
@@ -186,6 +197,7 @@
       <button class="clear" id="fxClear" aria-label="Borrar montos" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="sub" id="fxSub"></div>
+    <div class="chips" id="chips" role="group" aria-label="Montos rápidos"></div>
   </div>
 
   <footer>
@@ -217,6 +229,7 @@
     USDT: { sym: "$", label: "USDT", rate: "Binance P2P · promedio", src: "Binance P2P · vía CriptoYa" },
   };
   const CURS = ["USD", "EUR", "USDT"];
+  const PRESETS = [5, 10, 20, 50, 100];
   const LS = "tasa.arlexperalta.v1";
 
   const fmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -227,7 +240,7 @@
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
     bsClear: $("bsClear"), fxClear: $("fxClear"),
-    resetRate: $("resetRate"),
+    resetRate: $("resetRate"), chips: $("chips"),
     tabs: Array.from(document.querySelectorAll(".switch button")),
   };
 
@@ -326,6 +339,15 @@
   function updateClears() {
     const empty = !els.bs.value && !els.fx.value;
     els.bsClear.hidden = els.fxClear.hidden = empty;
+    paintChips();
+  }
+
+  function paintChips() {
+    const v = last === "fx" ? parse(els.fx.value) : NaN;
+    for (const b of els.chips.children) {
+      b.textContent = META[cur].sym + b.dataset.v;
+      b.setAttribute("aria-pressed", String(Number(b.dataset.v) === v));
+    }
   }
 
   function clearAmounts(target) {
@@ -401,6 +423,17 @@
     }
     els.refresh.classList.remove("spin"); paintRate(); recompute();
   }
+
+  PRESETS.forEach((v) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.v = v;
+    b.addEventListener("click", () => {
+      last = "fx";
+      els.fx.value = String(v);
+      recompute();
+    });
+    els.chips.appendChild(b);
+  });
 
   els.tabs.forEach((b) => b.addEventListener("click", () => {
     if (cur === b.dataset.cur) return;
