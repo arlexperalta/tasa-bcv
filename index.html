@@ -246,9 +246,41 @@
     const hasDot = s.includes("."), hasComma = s.includes(",");
     if (hasDot && hasComma) s = s.replace(/\./g, "").replace(",", ".");
     else if (hasComma) s = s.replace(",", ".");
+    else if (hasDot && /^\d{1,3}(\.\d{3})+$/.test(s.replace(/[^0-9.]/g, ""))) s = s.replace(/\./g, "");
     s = s.replace(/[^0-9.]/g, "");
     const n = Number(s);
     return isFinite(n) ? n : NaN;
+  }
+
+  // formatea miles en vivo (4200 → 4.200) preservando la posición del cursor
+  function fmtLive(el) {
+    const old = el.value, caretOld = el.selectionStart ?? old.length;
+    let sig = 0;
+    for (let i = 0; i < caretOld; i++) if (/[0-9,]/.test(old[i])) sig++;
+    const ci = old.indexOf(",");
+    let int_ = (ci >= 0 ? old.slice(0, ci) : old).replace(/\D/g, "");
+    const dec = ci >= 0 ? old.slice(ci + 1).replace(/\D/g, "").slice(0, 2) : null;
+    int_ = int_.replace(/^0+(?=\d)/, "");
+    let out = int_.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    if (dec != null) { if (!out) { out = "0"; sig++; } out += "," + dec; }
+    if (out === old) return;
+    el.value = out;
+    let caret = out.length, seen = 0;
+    if (sig === 0) caret = 0;
+    else for (let i = 0; i < out.length; i++) {
+      if (/[0-9,]/.test(out[i])) { seen++; if (seen === sig) { caret = i + 1; break; } }
+    }
+    el.setSelectionRange(caret, caret);
+  }
+
+  // un punto escrito a mano es intención de decimal (teclados sin coma)
+  function decimalDot(e) {
+    if (e.data !== "." && e.data !== ",") return;
+    e.preventDefault();
+    const el = e.target;
+    if (el.value.includes(",")) return;
+    el.setRangeText(",", el.selectionStart, el.selectionEnd, "end");
+    el.dispatchEvent(new Event("input", { bubbles: false }));
   }
 
   function currentRate() {
@@ -361,8 +393,10 @@
     if (cur === b.dataset.cur) return;
     cur = b.dataset.cur; store.cur = cur; save(); paintCurrency();
   }));
-  els.bs.addEventListener("input", () => { last = "bs"; recompute(); });
-  els.fx.addEventListener("input", () => { last = "fx"; recompute(); });
+  els.bs.addEventListener("beforeinput", decimalDot);
+  els.fx.addEventListener("beforeinput", decimalDot);
+  els.bs.addEventListener("input", () => { last = "bs"; fmtLive(els.bs); recompute(); });
+  els.fx.addEventListener("input", () => { last = "fx"; fmtLive(els.fx); recompute(); });
   els.rate.addEventListener("input", () => {
     const v = parse(els.rate.value);
     rateOverride = isFinite(v) && v > 0 ? v : null;
