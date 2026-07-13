@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es-VE">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Tasa BCV · Bolívares a dólares y euros</title>
+<meta name="description" content="Convierte bolívares a dólares y euros con la tasa oficial del BCV." />
+<meta name="theme-color" content="#2e3136" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>💵</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    /* base — gris neutro medio oscuro */
+    --bg: #2e3136;
+    --text: #eef0f2;
+    --muted: #9aa0a8;
+    --faint: #6b7178;
+    --line: #43474d;
+    --field: #383c42;
+    --track: #26282c;
+    --pill: #4b4f57;
+    /* marca — Orden del Caos */
+    --accent: #e42414;
+    --accent-dk: #b81d10;
+    --display: "Inter Tight", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--display);
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* grano de marca — 2.2% */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    opacity: .022;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  body > * { position: relative; z-index: 1; }
+
+  .mono { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 2px 16px; gap: 12px;
+  }
+  .tag { display: flex; align-items: center; gap: 9px; font-size: 10.5px; font-weight: 500; color: var(--muted); }
+  .tag .dash { width: 22px; height: 1.5px; background: var(--accent); flex: none; }
+  header .date { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .04em; white-space: nowrap; }
+
+  /* toggle dólar / euro */
+  .switch {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: var(--track); border-radius: 12px; padding: 4px;
+    margin-bottom: 20px;
+  }
+  .switch button {
+    appearance: none; border: 0; cursor: pointer; background: transparent;
+    font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--muted);
+    padding: 12px; border-radius: 9px; transition: background .18s, color .18s;
+  }
+  .switch button[aria-selected="true"] {
+    background: var(--pill); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+
+  /* tasa del día */
+  .rate {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 4px 16px; gap: 12px;
+  }
+  .rate .l { display: flex; align-items: center; gap: 9px; font-size: 10.5px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.on { background: var(--accent); box-shadow: 0 0 0 0 rgba(228,36,20,.5); animation: pulse 2.6s infinite; }
+  .rate .r { display: flex; align-items: baseline; gap: 5px; }
+  .rate .r input {
+    font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums;
+    border: 0; background: transparent; width: 5.6ch; text-align: right;
+    padding: 2px 0; outline: none; border-bottom: 1.5px solid transparent;
+  }
+  .rate .r input:focus { border-bottom-color: var(--accent); }
+  .rate .r .u { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  /* campos */
+  .field { background: var(--field); border-radius: 14px; padding: 15px 18px 16px; margin-bottom: 12px; }
+  .field label { display: block; font-family: var(--mono); text-transform: uppercase; letter-spacing: .16em; font-size: 10px; color: var(--muted); margin-bottom: 7px; }
+  .field .row { display: flex; align-items: center; gap: 8px; }
+  .field .cur { font-family: var(--display); font-size: 24px; font-weight: 500; color: var(--faint); flex: none; }
+  .field input.amt {
+    flex: 1; min-width: 0; width: 100%;
+    font-family: var(--display); font-weight: 700; font-size: clamp(30px, 10vw, 38px);
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em; color: var(--text);
+    border: 0; background: transparent; outline: none; padding: 0;
+  }
+  .field input.amt::placeholder { color: var(--faint); font-weight: 500; }
+  .field .sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); margin-top: 8px; min-height: 15px; }
+
+  /* pie */
+  footer { margin-top: auto; padding-top: 22px; }
+  .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .credits { font-size: 12px; line-height: 1.7; color: var(--faint); }
+  .credits .brand { color: var(--muted); }
+  .credits .brand b { color: var(--text); font-weight: 600; }
+  .credits a { color: var(--accent); text-decoration: none; }
+  .credits a:active { color: var(--accent-dk); }
+  .reset-rate { display: inline-block; margin-top: 3px; background: 0; border: 0; padding: 0; color: var(--accent); font-family: var(--display); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: transparent;
+    color: var(--text); font-family: var(--display); font-size: 14px; font-weight: 600;
+    padding: 11px 16px; border-radius: 11px; cursor: pointer; flex: none;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .btn:active { background: var(--field); }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.spin svg { animation: spin .8s linear infinite; }
+  .made { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 9.5px; color: var(--faint); text-align: center; margin-top: 20px; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(228,36,20,.5); } 70% { box-shadow: 0 0 0 6px rgba(228,36,20,0); } 100% { box-shadow: 0 0 0 0 rgba(228,36,20,0); } }
+  @media (prefers-reduced-motion: reduce) { .btn.spin svg, .dot.on { animation: none; } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="tag"><span class="dash"></span> Calculadora de cambio</div>
+    <span class="date" id="fecha">Cargando…</span>
+  </header>
+
+  <div class="switch" role="tablist" aria-label="Moneda">
+    <button role="tab" data-cur="USD" aria-selected="true">Dólar $</button>
+    <button role="tab" data-cur="EUR" aria-selected="false">Euro €</button>
+  </div>
+
+  <div class="rate">
+    <span class="l"><span class="dot" id="live"></span> Tasa del día · BCV</span>
+    <span class="r" id="rateWrap">
+      <input id="rate" inputmode="decimal" aria-label="Tasa en bolívares" />
+      <span class="u">Bs</span>
+    </span>
+  </div>
+
+  <div class="field">
+    <label for="bs">Bolívares</label>
+    <div class="row">
+      <span class="cur">Bs</span>
+      <input id="bs" class="amt" inputmode="decimal" placeholder="0,00" aria-label="Monto en bolívares" />
+    </div>
+    <div class="sub" id="bsSub"></div>
+  </div>
+
+  <div class="field">
+    <label for="fx" id="fxLabel">Dólares</label>
+    <div class="row">
+      <span class="cur" id="fxSym">$</span>
+      <input id="fx" class="amt" inputmode="decimal" placeholder="0,00" aria-label="Monto en moneda extranjera" />
+    </div>
+    <div class="sub" id="fxSub"></div>
+  </div>
+
+  <footer>
+    <div class="foot-row">
+      <div class="credits">
+        <div>Tasa oficial del BCV · vía dolarapi</div>
+        <div class="brand">Hecho por <b>Arlex Peralta</b> · <a href="https://arlexperalta.com" target="_blank" rel="noopener">arlexperalta.com</a></div>
+        <button class="reset-rate" id="resetRate" hidden>Volver a la tasa BCV</button>
+      </div>
+      <button class="btn" id="refresh" aria-label="Actualizar la tasa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>
+        Actualizar
+      </button>
+    </div>
+    <div class="made">Hecho en Venezuela</div>
+  </footer>
+
+<script>
+(() => {
+  "use strict";
+  const API = {
+    USD: "https://ve.dolarapi.com/v1/dolares/oficial",
+    EUR: "https://ve.dolarapi.com/v1/euros/oficial",
+  };
+  const META = { USD: { sym: "$", label: "Dólares" }, EUR: { sym: "€", label: "Euros" } };
+  const LS = "tasa.arlexperalta.v1";
+
+  const fmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    live: $("live"), fecha: $("fecha"), rate: $("rate"), rateWrap: $("rateWrap"),
+    bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
+    bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
+    resetRate: $("resetRate"),
+    tabs: Array.from(document.querySelectorAll(".switch button")),
+  };
+
+  let cur = "USD";
+  let official = {};
+  let rateOverride = null;
+  let last = "bs";
+
+  const store = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
+  const save = () => { try { localStorage.setItem(LS, JSON.stringify(store)); } catch {} };
+
+  function parse(str) {
+    if (str == null) return NaN;
+    let s = String(str).trim().replace(/\s/g, "");
+    if (!s) return NaN;
+    const hasDot = s.includes("."), hasComma = s.includes(",");
+    if (hasDot && hasComma) s = s.replace(/\./g, "").replace(",", ".");
+    else if (hasComma) s = s.replace(",", ".");
+    s = s.replace(/[^0-9.]/g, "");
+    const n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function currentRate() {
+    if (rateOverride != null && isFinite(rateOverride)) return rateOverride;
+    return official[cur] ? official[cur].valor : NaN;
+  }
+
+  function paintRate() {
+    const r = currentRate();
+    if (document.activeElement !== els.rate) els.rate.value = isFinite(r) ? fmt.format(r) : "";
+    els.resetRate.hidden = rateOverride == null;
+    const o = official[cur];
+    if (rateOverride != null) { els.fecha.textContent = "tasa manual"; els.live.classList.remove("on"); }
+    else if (o) { els.fecha.textContent = o.fecha || "guardada"; els.live.classList.toggle("on", !!o.fresh); }
+    else { els.fecha.textContent = "escribe la tasa"; els.live.classList.remove("on"); }
+  }
+
+  function recompute() {
+    const r = currentRate();
+    if (!isFinite(r) || r <= 0) { els.bsSub.textContent = els.fxSub.textContent = ""; return; }
+    if (last === "bs") {
+      const bs = parse(els.bs.value);
+      if (isFinite(bs)) {
+        els.fx.value = fmt.format(bs / r);
+        els.bsSub.textContent = bs ? fmt.format(bs) + " Bs" : "";
+        els.fxSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym;
+      } else { els.fx.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
+    } else {
+      const fx = parse(els.fx.value);
+      if (isFinite(fx)) {
+        els.bs.value = fmt.format(fx * r);
+        els.fxSub.textContent = fx ? META[cur].sym + " " + fmt.format(fx) : "";
+        els.bsSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym;
+      } else { els.bs.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
+    }
+  }
+
+  function paintCurrency() {
+    const m = META[cur];
+    els.fxSym.textContent = m.sym;
+    els.fxLabel.textContent = m.label;
+    els.fx.setAttribute("aria-label", "Monto en " + m.label.toLowerCase());
+    els.tabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cur === cur)));
+    rateOverride = store.override && store.override[cur] != null ? store.override[cur] : null;
+    paintRate(); recompute();
+  }
+
+  function applyCached() {
+    if (store.official) {
+      official = {};
+      for (const k of ["USD", "EUR"]) if (store.official[k]) official[k] = { ...store.official[k], fresh: false };
+    }
+  }
+
+  const strip = (o) => o ? { valor: o.valor, fecha: o.fecha } : null;
+
+  function fmtFecha(iso) {
+    try { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { day: "numeric", month: "long" }); }
+    catch { return ""; }
+  }
+
+  async function fetchRates(manual) {
+    els.refresh.classList.add("spin"); els.live.classList.remove("on");
+    try {
+      const out = {};
+      await Promise.all(["USD", "EUR"].map(async (k) => {
+        const res = await fetch(API[k], { cache: "no-store" });
+        if (!res.ok) throw new Error(res.status);
+        const d = await res.json();
+        const valor = Number(d.promedio ?? d.venta ?? d.compra);
+        if (!isFinite(valor)) throw new Error("sin valor");
+        out[k] = { valor, fecha: fmtFecha(d.fechaActualizacion), fresh: true };
+      }));
+      official = out;
+      store.official = { USD: strip(out.USD), EUR: strip(out.EUR) };
+      save();
+    } catch (e) {
+      if (manual) { els.fecha.textContent = "sin conexión"; setTimeout(paintRate, 2000); }
+    } finally {
+      els.refresh.classList.remove("spin"); paintRate(); recompute();
+    }
+  }
+
+  els.tabs.forEach((b) => b.addEventListener("click", () => {
+    if (cur === b.dataset.cur) return;
+    cur = b.dataset.cur; store.cur = cur; save(); paintCurrency();
+  }));
+  els.bs.addEventListener("input", () => { last = "bs"; recompute(); });
+  els.fx.addEventListener("input", () => { last = "fx"; recompute(); });
+  els.rate.addEventListener("input", () => {
+    const v = parse(els.rate.value);
+    rateOverride = isFinite(v) && v > 0 ? v : null;
+    store.override = store.override || {}; store.override[cur] = rateOverride; save();
+    els.resetRate.hidden = rateOverride == null; recompute();
+  });
+  els.rate.addEventListener("blur", paintRate);
+  els.rateWrap.addEventListener("click", () => els.rate.focus());
+  els.resetRate.addEventListener("click", () => {
+    rateOverride = null; if (store.override) { delete store.override[cur]; save(); }
+    paintRate(); recompute();
+  });
+  els.refresh.addEventListener("click", () => fetchRates(true));
+
+  cur = store.cur === "EUR" ? "EUR" : "USD";
+  applyCached(); paintCurrency(); fetchRates(false);
+})();
+</script>
+</body>
+</html>
