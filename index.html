@@ -95,9 +95,8 @@
     font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums;
     border: 0; background: transparent; width: 8ch; text-align: right;
-    padding: 2px 0; outline: none; border-bottom: 1.5px solid transparent;
+    padding: 2px 0; outline: none; pointer-events: none;
   }
-  .rate .r input:focus { border-bottom-color: var(--accent); }
   .rate .r .u { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
   /* campos */
@@ -141,7 +140,6 @@
   .credits .brand b { color: var(--text); font-weight: 600; }
   .credits a { color: var(--accent); text-decoration: none; }
   .credits a:active { color: var(--accent-dk); }
-  .reset-rate { display: inline-block; margin-top: 3px; background: 0; border: 0; padding: 0; color: var(--accent); font-family: var(--display); font-size: 12.5px; font-weight: 600; cursor: pointer; }
   .btn {
     appearance: none; border: 1px solid var(--line); background: transparent;
     color: var(--text); font-family: var(--display); font-size: 14px; font-weight: 600;
@@ -174,7 +172,7 @@
   <div class="rate">
     <span class="l"><span class="dot" id="live"></span> <span id="rateLabel">Tasa del día · BCV</span></span>
     <span class="r" id="rateWrap">
-      <input id="rate" inputmode="decimal" aria-label="Tasa en bolívares" />
+      <input id="rate" readonly tabindex="-1" aria-label="Tasa en bolívares" />
       <span class="u">Bs</span>
     </span>
   </div>
@@ -205,7 +203,6 @@
       <div class="credits">
         <div id="srcLine">Tasa oficial del BCV · vía dolarapi</div>
         <div class="brand">Hecho por <b>Arlex Peralta</b> · <a href="https://arlexperalta.com" target="_blank" rel="noopener">arlexperalta.com</a></div>
-        <button class="reset-rate" id="resetRate" hidden>Volver a la tasa BCV</button>
       </div>
       <button class="btn" id="refresh" aria-label="Actualizar la tasa">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>
@@ -235,22 +232,23 @@
   const fmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const $ = (id) => document.getElementById(id);
   const els = {
-    live: $("live"), fecha: $("fecha"), rate: $("rate"), rateWrap: $("rateWrap"),
+    live: $("live"), fecha: $("fecha"), rate: $("rate"),
     rateLabel: $("rateLabel"), srcLine: $("srcLine"),
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
     bsClear: $("bsClear"), fxClear: $("fxClear"),
-    resetRate: $("resetRate"), chips: $("chips"),
+    chips: $("chips"),
     tabs: Array.from(document.querySelectorAll(".switch button")),
   };
 
   let cur = "USD";
   let official = {};
-  let rateOverride = null;
   let last = "bs";
 
   const store = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
   const save = () => { try { localStorage.setItem(LS, JSON.stringify(store)); } catch {} };
+  // la tasa ya no es editable: limpiar overrides guardados por versiones anteriores
+  if (store.override) { delete store.override; save(); }
 
   function parse(str) {
     if (str == null) return NaN;
@@ -297,22 +295,19 @@
   }
 
   function currentRate() {
-    if (rateOverride != null && isFinite(rateOverride)) return rateOverride;
     return official[cur] ? official[cur].valor : NaN;
   }
 
   function paintRate() {
     const r = currentRate();
-    if (document.activeElement !== els.rate) els.rate.value = isFinite(r) ? fmt.format(r) : "";
-    els.resetRate.hidden = rateOverride == null;
+    els.rate.value = isFinite(r) ? fmt.format(r) : "";
     const o = official[cur];
-    if (rateOverride != null) { els.fecha.textContent = "tasa manual"; els.live.classList.remove("on"); }
-    else if (o) {
+    if (o) {
       const f = [o.fecha, o.hora].filter(Boolean).join(" · ");
       els.fecha.textContent = f || "guardada";
       els.live.classList.toggle("on", !!o.fresh);
     }
-    else { els.fecha.textContent = "escribe la tasa"; els.live.classList.remove("on"); }
+    else { els.fecha.textContent = "sin datos · actualiza"; els.live.classList.remove("on"); }
   }
 
   function recompute() {
@@ -364,7 +359,6 @@
     els.srcLine.textContent = m.src;
     els.fx.setAttribute("aria-label", "Monto en " + (cur === "USDT" ? m.label : m.label.toLowerCase()));
     els.tabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cur === cur)));
-    rateOverride = store.override && store.override[cur] != null ? store.override[cur] : null;
     paintRate(); recompute();
   }
 
@@ -443,18 +437,6 @@
   els.fx.addEventListener("beforeinput", decimalDot);
   els.bs.addEventListener("input", () => { last = "bs"; fmtLive(els.bs); recompute(); });
   els.fx.addEventListener("input", () => { last = "fx"; fmtLive(els.fx); recompute(); });
-  els.rate.addEventListener("input", () => {
-    const v = parse(els.rate.value);
-    rateOverride = isFinite(v) && v > 0 ? v : null;
-    store.override = store.override || {}; store.override[cur] = rateOverride; save();
-    els.resetRate.hidden = rateOverride == null; recompute();
-  });
-  els.rate.addEventListener("blur", paintRate);
-  els.rateWrap.addEventListener("click", () => els.rate.focus());
-  els.resetRate.addEventListener("click", () => {
-    rateOverride = null; if (store.override) { delete store.override[cur]; save(); }
-    paintRate(); recompute();
-  });
   els.bsClear.addEventListener("click", () => clearAmounts(els.bs));
   els.fxClear.addEventListener("click", () => clearAmounts(els.fx));
   els.refresh.addEventListener("click", () => fetchRates(true));
