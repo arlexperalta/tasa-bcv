@@ -218,7 +218,9 @@
   const API = {
     USD: "https://ve.dolarapi.com/v1/dolares/oficial",
     EUR: "https://ve.dolarapi.com/v1/euros/oficial",
-    USDT: "https://criptoya.com/api/binancep2p/USDT/VES/100",
+    // vía el propio dominio: CriptoYa bloquea el fetch del navegador (CORS),
+    // pero sí responde server-to-server. nginx la trae y la cachea.
+    USDT: "/api/usdt",
   };
   const META = {
     USD: { sym: "$", label: "Dólares", rate: "Tasa del día · BCV", src: "Tasa oficial del BCV · vía dolarapi" },
@@ -312,7 +314,13 @@
 
   function recompute() {
     const r = currentRate();
-    if (!isFinite(r) || r <= 0) { els.bsSub.textContent = els.fxSub.textContent = ""; updateClears(); return; }
+    // sin tasa no hay conversión: borrar el monto derivado. Si se queda el de la
+    // moneda anterior, la pantalla miente (un monto de dólar rotulado USDT).
+    if (!isFinite(r) || r <= 0) {
+      if (last === "bs") els.fx.value = ""; else els.bs.value = "";
+      els.bsSub.textContent = els.fxSub.textContent = "";
+      updateClears(); return;
+    }
     if (last === "bs") {
       const bs = parse(els.bs.value);
       if (isFinite(bs)) {
