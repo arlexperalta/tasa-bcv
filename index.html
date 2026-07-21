@@ -43,7 +43,9 @@
     font-family: var(--display);
     color: var(--text);
     background: var(--bg);
-    min-height: 100dvh;
+    /* svh, no dvh: la altura dinámica salta cuando la barra del navegador
+       se esconde tras un pull-to-refresh y la app entera se reacomoda */
+    min-height: 100svh;
     display: flex; flex-direction: column;
     padding: env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom));
     max-width: 480px; margin: 0 auto;
