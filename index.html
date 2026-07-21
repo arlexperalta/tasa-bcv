@@ -99,6 +99,19 @@
   }
   .rate .r .u { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
+  /* tasa próxima (la que el BCV ya publicó con fecha-valor de mañana) */
+  .next {
+    appearance: none; cursor: pointer; width: 100%;
+    border: 1px dashed var(--line); background: transparent; color: var(--muted);
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: .12em; font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    padding: 10px 12px; border-radius: 11px; margin: -2px 0 16px;
+    transition: color .15s, border-color .15s;
+  }
+  .next[aria-pressed="true"] { border-style: solid; border-color: var(--accent); color: var(--text); }
+  .next:active { color: var(--text); }
+  #rateLabel.ahead { color: var(--text); }
+
   /* campos */
   .field { background: var(--field); border-radius: 14px; padding: 15px 18px 16px; margin-bottom: 12px; }
   .field label { display: block; font-family: var(--mono); text-transform: uppercase; letter-spacing: .16em; font-size: 10px; color: var(--muted); margin-bottom: 7px; }
@@ -177,6 +190,8 @@
     </span>
   </div>
 
+  <button class="next" id="nextBtn" aria-pressed="false" hidden></button>
+
   <div class="field">
     <label for="bs">Bolívares</label>
     <div class="row">
@@ -221,10 +236,13 @@
     // vía el propio dominio: CriptoYa bloquea el fetch del navegador (CORS),
     // pero sí responde server-to-server. nginx la trae y la cachea.
     USDT: "/api/usdt",
+    // página del BCV, misma vía. Única fuente con fecha-valor: en la tarde
+    // publica la tasa de mañana (el viernes, la del lunes).
+    BCV: "/api/bcv",
   };
   const META = {
-    USD: { sym: "$", label: "Dólares", rate: "Tasa del día · BCV", src: "Tasa oficial del BCV · vía dolarapi" },
-    EUR: { sym: "€", label: "Euros", rate: "Tasa del día · BCV", src: "Tasa oficial del BCV · vía dolarapi" },
+    USD: { sym: "$", label: "Dólares", rate: "Tasa del día · BCV", src: "Tasa oficial · bcv.org.ve" },
+    EUR: { sym: "€", label: "Euros", rate: "Tasa del día · BCV", src: "Tasa oficial · bcv.org.ve" },
     USDT: { sym: "$", label: "USDT", rate: "Binance P2P · promedio", src: "Binance P2P · vía CriptoYa" },
   };
   const CURS = ["USD", "EUR", "USDT"];
@@ -239,18 +257,22 @@
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
     bsClear: $("bsClear"), fxClear: $("fxClear"),
-    chips: $("chips"),
+    chips: $("chips"), nextBtn: $("nextBtn"),
     tabs: Array.from(document.querySelectorAll(".switch button")),
   };
 
   let cur = "USD";
-  let official = {};
+  let official = {};   // USDT en vivo + fallback de caches viejos USD/EUR
+  let pubs = {};       // publicaciones por fecha-valor: { "2026-07-22": { USD, EUR, hora } }
+  let fresh = {};      // monedas actualizadas con éxito en esta sesión
+  let showNext = false;
   let last = "bs";
 
   const store = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
   const save = () => { try { localStorage.setItem(LS, JSON.stringify(store)); } catch {} };
   // la tasa ya no es editable: limpiar overrides guardados por versiones anteriores
   if (store.override) { delete store.override; save(); }
+  if (store.pubs && typeof store.pubs === "object") pubs = store.pubs;
 
   function parse(str) {
     if (str == null) return NaN;
@@ -296,20 +318,77 @@
     el.dispatchEvent(new Event("input", { bubbles: false }));
   }
 
+  // hoy en Venezuela: la fecha-valor del BCV vive en -04:00, no en la zona del teléfono
+  const hoyIso = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
+  const vigenteIso = () => { const t = hoyIso(); return Object.keys(pubs).filter((k) => k <= t).sort().pop() || null; };
+  const proximaIso = () => { const t = hoyIso(); return Object.keys(pubs).filter((k) => k > t).sort()[0] || null; };
+  const hasPub = (iso) => !!(iso && pubs[iso] && isFinite(pubs[iso][cur]) && pubs[iso][cur] > 0);
+
+  // qué publicación se muestra: la próxima si el usuario la pidió; si no la
+  // vigente; si no hay vigente conocida (primer uso un fin de semana), la próxima
+  function displayIso() {
+    if (cur === "USDT") return null;
+    const v = vigenteIso(), n = proximaIso();
+    if (showNext && hasPub(n)) return n;
+    if (hasPub(v)) return v;
+    if (hasPub(n)) return n;
+    return null;
+  }
+
   function currentRate() {
+    if (cur === "USDT") return official.USDT ? official.USDT.valor : NaN;
+    const iso = displayIso();
+    if (iso) return pubs[iso][cur];
     return official[cur] ? official[cur].valor : NaN;
+  }
+
+  function addPub(iso, vals) {
+    const p = pubs[iso] || (pubs[iso] = {});
+    for (const k of ["USD", "EUR"]) if (isFinite(vals[k]) && vals[k] > 0) p[k] = vals[k];
+    p.hora = fmtHora(new Date());
+  }
+
+  function prunePubs() {
+    const v = vigenteIso();
+    for (const k of Object.keys(pubs)) if (v && k < v) delete pubs[k];
   }
 
   function paintRate() {
     const r = currentRate();
     els.rate.value = isFinite(r) ? fmt.format(r) : "";
-    const o = official[cur];
-    if (o) {
-      const f = [o.fecha, o.hora].filter(Boolean).join(" · ");
-      els.fecha.textContent = f || "guardada";
-      els.live.classList.toggle("on", !!o.fresh);
+    let fechaTxt = "", label = META[cur].rate, ahead = false;
+    if (cur === "USDT") {
+      const o = official.USDT;
+      if (o) fechaTxt = [o.fecha, o.hora].filter(Boolean).join(" · ");
+    } else {
+      const iso = displayIso();
+      if (iso) {
+        fechaTxt = [fmtFecha(iso + "T12:00:00-04:00"), pubs[iso].hora].filter(Boolean).join(" · ");
+        if (iso > hoyIso()) { label = "Tasa del " + fmtDia(iso) + " · BCV"; ahead = true; }
+      } else if (official[cur]) {
+        fechaTxt = [official[cur].fecha, official[cur].hora].filter(Boolean).join(" · ");
+      }
+    }
+    els.rateLabel.textContent = label;
+    els.rateLabel.classList.toggle("ahead", ahead);
+    if (isFinite(r)) {
+      els.fecha.textContent = fechaTxt || "guardada";
+      els.live.classList.toggle("on", !!fresh[cur]);
     }
     else { els.fecha.textContent = "sin datos · actualiza"; els.live.classList.remove("on"); }
+    paintNextBtn();
+  }
+
+  // el botón solo existe cuando hay tasa de hoy Y una futura que ofrecer
+  function paintNextBtn() {
+    const n = proximaIso();
+    const show = cur !== "USDT" && hasPub(n) && hasPub(vigenteIso());
+    els.nextBtn.hidden = !show;
+    if (!show) { showNext = false; return; }
+    els.nextBtn.setAttribute("aria-pressed", String(showNext));
+    els.nextBtn.textContent = showNext
+      ? "Volver a la tasa de hoy"
+      : "Ver tasa del " + fmtDia(n) + " · " + fmt.format(pubs[n][cur]) + " Bs";
   }
 
   function recompute() {
@@ -363,7 +442,6 @@
     const m = META[cur];
     els.fxSym.textContent = m.sym;
     els.fxLabel.textContent = m.label;
-    els.rateLabel.textContent = m.rate;
     els.srcLine.textContent = m.src;
     els.fx.setAttribute("aria-label", "Monto en " + (cur === "USDT" ? m.label : m.label.toLowerCase()));
     els.tabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cur === cur)));
@@ -385,6 +463,14 @@
     catch { return ""; }
   }
 
+  // día con nombre para la tasa futura: "mié 22 jul"
+  function fmtDia(iso) {
+    try {
+      const d = new Date(iso + "T12:00:00-04:00");
+      return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
+    } catch { return ""; }
+  }
+
   // hora local del momento en que la app consultó la tasa con éxito
   function fmtHora(d) {
     let h = d.getHours();
@@ -393,30 +479,56 @@
     return (h % 12 || 12) + ":" + min + " " + ap;
   }
 
-  async function fetchOne(k) {
+  // página del BCV: fecha-valor + USD + EUR. Después de la publicación de la
+  // tarde, la fecha-valor es mañana y eso alimenta el botón de tasa próxima.
+  async function fetchBcv() {
+    const res = await fetch(API.BCV, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    const html = await res.text();
+    const mIso = html.match(/Fecha Valor:[\s\S]{0,200}?content="(\d{4}-\d{2}-\d{2})/);
+    const num = (m) => {
+      if (!m) return NaN;
+      const n = Number(m[1].replace(/\./g, "").replace(",", "."));
+      return isFinite(n) && n > 0 ? n : NaN;
+    };
+    const usd = num(html.match(/id="dolar"[\s\S]{0,800}?strong-tb">\s*([\d.,]+)/));
+    const eur = num(html.match(/id="euro"[\s\S]{0,800}?strong-tb">\s*([\d.,]+)/));
+    if (!mIso || !isFinite(usd)) throw new Error("bcv sin datos");
+    addPub(mIso[1], { USD: usd, EUR: eur });
+    fresh.USD = true;
+    if (isFinite(eur)) fresh.EUR = true;
+  }
+
+  // dolarapi: respaldo si el BCV no responde. Su fechaActualizacion ES la
+  // fecha-valor (siempre medianoche), así que también entra como publicación.
+  async function fetchFx(k) {
     const res = await fetch(API[k], { cache: "no-store" });
     if (!res.ok) throw new Error(res.status);
     const d = await res.json();
-    let valor, fecha;
-    if (k === "USDT") {
-      valor = (Number(d.ask) + Number(d.bid)) / 2;
-      fecha = fmtFecha(d.time * 1000);
-    } else {
-      valor = Number(d.promedio ?? d.venta ?? d.compra);
-      fecha = fmtFecha(d.fechaActualizacion);
-    }
+    const valor = Number(d.promedio ?? d.venta ?? d.compra);
     if (!isFinite(valor) || valor <= 0) throw new Error("sin valor");
-    return { valor, fecha, hora: fmtHora(new Date()), fresh: true };
+    official[k] = { valor, fecha: fmtFecha(d.fechaActualizacion), hora: fmtHora(new Date()) };
+    const iso = String(d.fechaActualizacion || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) addPub(iso, { [k]: valor });
+    fresh[k] = true;
+  }
+
+  async function fetchUsdt() {
+    const res = await fetch(API.USDT, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+    const valor = (Number(d.ask) + Number(d.bid)) / 2;
+    if (!isFinite(valor) || valor <= 0) throw new Error("sin valor");
+    official.USDT = { valor, fecha: fmtFecha(d.time * 1000), hora: fmtHora(new Date()) };
+    fresh.USDT = true;
   }
 
   async function fetchRates(manual) {
     els.refresh.classList.add("spin"); els.live.classList.remove("on");
-    const results = await Promise.allSettled(CURS.map(fetchOne));
-    let any = false;
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") { official[CURS[i]] = r.value; any = true; }
-    });
-    if (any) {
+    const results = await Promise.allSettled([fetchBcv(), fetchFx("USD"), fetchFx("EUR"), fetchUsdt()]);
+    if (results.some((r) => r.status === "fulfilled")) {
+      prunePubs();
+      store.pubs = pubs;
       store.official = {};
       for (const k of CURS) store.official[k] = strip(official[k]);
       save();
@@ -448,6 +560,7 @@
   els.bsClear.addEventListener("click", () => clearAmounts(els.bs));
   els.fxClear.addEventListener("click", () => clearAmounts(els.fx));
   els.refresh.addEventListener("click", () => fetchRates(true));
+  els.nextBtn.addEventListener("click", () => { showNext = !showNext; paintRate(); recompute(); });
 
   cur = CURS.includes(store.cur) ? store.cur : "USD";
   applyCached(); paintCurrency(); fetchRates(false);
