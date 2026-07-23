@@ -33,6 +33,11 @@
     /* marca — Orden del Caos */
     --accent: #e42414;
     --accent-dk: #b81d10;
+    /* inverso — superficie clara para lo que debe saltar del fondo oscuro */
+    --inv-bg: #c6cad1;
+    --inv-bg-dn: #b0b5bd;
+    --inv-text: #212429;
+    --inv-muted: #5a6068;
     --display: "Inter Tight", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, monospace;
   }
@@ -101,17 +106,6 @@
   }
   .rate .r .u { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
-  /* tasa próxima (la que el BCV ya publicó con fecha-valor de mañana) */
-  .next {
-    appearance: none; cursor: pointer; width: 100%;
-    border: 1px dashed var(--line); background: transparent; color: var(--muted);
-    font-family: var(--mono); text-transform: uppercase; letter-spacing: .12em; font-size: 10.5px;
-    font-variant-numeric: tabular-nums;
-    padding: 10px 12px; border-radius: 11px; margin: -2px 0 16px;
-    transition: color .15s, border-color .15s;
-  }
-  .next[aria-pressed="true"] { border-style: solid; border-color: var(--accent); color: var(--text); }
-  .next:active { color: var(--text); }
   #rateLabel.ahead { color: var(--text); }
 
   /* campos */
@@ -146,6 +140,21 @@
     transition: background .15s, color .15s;
   }
   .chips button[aria-pressed="true"], .chips button:active { background: var(--pill); color: var(--text); }
+
+  /* tasa próxima (la que el BCV ya publicó con fecha-valor de mañana) */
+  .next {
+    appearance: none; cursor: pointer; width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--inv-bg); border: 1px solid transparent; color: var(--inv-text);
+    padding: 13px 16px; border-radius: 12px;
+    transition: background .15s, border-color .15s;
+  }
+  .next:active { background: var(--inv-bg-dn); }
+  .next[aria-pressed="true"] { border-color: var(--accent); }
+  .next .nl { display: flex; align-items: center; gap: 8px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; color: var(--inv-muted); text-align: left; }
+  .next .nl svg { width: 13px; height: 13px; flex: none; color: var(--accent); }
+  .next .nv { font-family: var(--display); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
+  .next .nu { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--inv-muted); letter-spacing: .05em; }
 
   /* pie */
   footer { margin-top: auto; padding-top: 22px; }
@@ -192,8 +201,6 @@
     </span>
   </div>
 
-  <button class="next" id="nextBtn" aria-pressed="false" hidden></button>
-
   <div class="field">
     <label for="bs">Bolívares</label>
     <div class="row">
@@ -214,6 +221,8 @@
     <div class="sub" id="fxSub"></div>
     <div class="chips" id="chips" role="group" aria-label="Montos rápidos"></div>
   </div>
+
+  <button class="next" id="nextBtn" aria-pressed="false" hidden></button>
 
   <footer>
     <div class="foot-row">
@@ -383,14 +392,17 @@
 
   // el botón solo existe cuando hay tasa de hoy Y una futura que ofrecer
   function paintNextBtn() {
-    const n = proximaIso();
-    const show = cur !== "USDT" && hasPub(n) && hasPub(vigenteIso());
+    const n = proximaIso(), v = vigenteIso();
+    const show = cur !== "USDT" && hasPub(n) && hasPub(v);
     els.nextBtn.hidden = !show;
     if (!show) { showNext = false; return; }
     els.nextBtn.setAttribute("aria-pressed", String(showNext));
-    els.nextBtn.textContent = showNext
-      ? "Volver a la tasa de hoy"
-      : "Ver tasa del " + fmtDia(n) + " · " + fmt.format(pubs[n][cur]) + " Bs";
+    // muestra la tasa contraria a la que está en pantalla, para comparar de un vistazo
+    const iso = showNext ? v : n;
+    const swap = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16V4M7 4L3 8M7 4l4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/></svg>';
+    els.nextBtn.innerHTML =
+      '<span class="nl">' + swap + (showNext ? "Volver a la tasa de hoy" : "Ver tasa del " + fmtDia(n)) + "</span>" +
+      '<span class="nv">' + fmt.format(pubs[iso][cur]) + '<span class="nu"> Bs</span></span>';
   }
 
   function recompute() {
