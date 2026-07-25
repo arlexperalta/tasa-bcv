@@ -10,6 +10,7 @@ Calculadora de cambio para Venezuela. Convierte bolívares a dólares y euros co
 - Convierte en ambos sentidos: escribes en bolívares o en la moneda, y el otro campo se calcula solo.
 - Formato venezolano (`1.000.000,00`).
 - Botón para borrar los montos de un toque y empezar de cero.
+- **Compartir contextual**: si hay un cálculo en pantalla comparte el cálculo con su tasa y la fecha de esa tasa; si no, comparte la app. Usa la hoja nativa del sistema (`navigator.share`) y cae al portapapeles donde no exista.
 - Tasa **editable a mano** por si prefieres otra, con un toque para volver a la del BCV.
 - **Funciona sin internet** con la última tasa guardada.
 - Pensada para usarse en el teléfono: campos grandes, lectura clara.
@@ -23,6 +24,8 @@ Es una sola página estática, sin backend ni base de datos. Las tasas se piden 
 - USDT Binance P2P: `/api/usdt`, que el nginx del sitio pasa a `https://criptoya.com/api/binancep2p/USDT/VES/100` ([CriptoYa](https://criptoya.com)) — se muestra el promedio entre compra y venta para órdenes de 100 USDT
 
 **Por qué USDT pasa por el proxy** (2026-07-15): CriptoYa dejó de permitir el fetch desde el navegador (CORS) y bloquea por IP, aunque sí responde server-to-server. Pedirla desde el propio dominio la vuelve same-origin y el CORS deja de aplicar. La config vive en `nginx/default.conf` y cachea 60s (CriptoYa manda `no-store`, que se ignora a propósito para no pegarle a su API en cada visita). El proxy sirve la última copia buena si la fuente cae; el payload trae su propio timestamp, así que la hora que muestra la app es la del dato, no una fresca falsa.
+
+**Lo que se comparte dice de qué día es la tasa** (2026-07-25): el texto no dice "tasa de hoy" sino "Tasa BCV del vie 25 jul". Si el usuario está viendo la tasa del día siguiente, eso es lo que sale en el mensaje. Un cálculo compartido viaja fuera de la app y sobrevive al día en que se hizo; sin la fecha, el que lo recibe no puede saber si sigue vigente.
 
 **Cuando no hay tasa, no hay número.** Si una fuente no carga, la calculadora borra el monto convertido y avisa (`sin datos · actualiza`) en vez de dejar el resultado calculado con la tasa de otra moneda. Antes no lo hacía: al cambiar a USDT con la fuente caída, la pantalla mostraba un monto de dólar rotulado USDT. Un número equivocado con la etiqueta correcta es peor que ningún número.
 

@@ -158,8 +158,10 @@
 
   /* pie */
   footer { margin-top: auto; padding-top: 22px; }
-  .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
-  .credits { font-size: 12px; line-height: 1.7; color: var(--faint); }
+  .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  /* en pantallas angostas los botones bajan a su propia fila antes que dejar
+     los créditos partidos en cinco líneas */
+  .credits { font-size: 12px; line-height: 1.7; color: var(--faint); flex: 1 1 200px; }
   .credits .brand { color: var(--muted); }
   .credits .brand b { color: var(--text); font-weight: 600; }
   .credits a { color: var(--accent); text-decoration: none; }
@@ -173,6 +175,9 @@
   .btn:active { background: var(--field); }
   .btn svg { width: 16px; height: 16px; }
   .btn.spin svg { animation: spin .8s linear infinite; }
+  /* solo ícono: la flecha circular se lee sola y le deja el texto a Compartir */
+  .btn.ico { padding: 11px; }
+  .acts { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
   .made { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 9.5px; color: var(--faint); text-align: center; margin-top: 20px; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -230,10 +235,15 @@
         <div id="srcLine">Tasa oficial del BCV · vía dolarapi</div>
         <div class="brand">Hecho por <b>Arlex Peralta</b> · <a href="https://arlexperalta.com" target="_blank" rel="noopener">arlexperalta.com</a></div>
       </div>
-      <button class="btn" id="refresh" aria-label="Actualizar la tasa">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>
-        Actualizar
-      </button>
+      <div class="acts">
+        <button class="btn ico" id="refresh" aria-label="Actualizar la tasa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>
+        </button>
+        <button class="btn" id="share" aria-label="Compartir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+          <span id="shareTxt">Compartir</span>
+        </button>
+      </div>
     </div>
     <div class="made">Hecho en Venezuela</div>
   </footer>
@@ -269,6 +279,7 @@
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
     bsClear: $("bsClear"), fxClear: $("fxClear"),
     chips: $("chips"), nextBtn: $("nextBtn"),
+    share: $("share"), shareTxt: $("shareTxt"),
     tabs: Array.from(document.querySelectorAll(".switch button")),
   };
 
@@ -552,6 +563,59 @@
     els.refresh.classList.remove("spin"); paintRate(); recompute();
   }
 
+  // compartir — un solo botón, dos mensajes. Si hay un cálculo en pantalla va el
+  // cálculo (con la tasa y SU fecha: si el usuario está viendo la de mañana, eso
+  // dice el texto); si no, va la app sola. El link viaja siempre: es el reparto.
+  const SITE = location.protocol.startsWith("http") ? location.origin : "https://tasa.arlexperalta.com";
+
+  // el mensaje sale al mundo: los dos montos con el mismo formato, aunque en
+  // pantalla el chip haya dejado un "20" pelado
+  const num = (v) => { const n = parse(v); return isFinite(n) ? fmt.format(n) : v; };
+  const montoTxt = (v) => (cur === "USDT" ? num(v) + " USDT" : META[cur].sym + " " + num(v));
+
+  function fuenteTxt() {
+    const r = fmt.format(currentRate()) + " Bs por " + (cur === "USDT" ? "USDT" : META[cur].sym);
+    if (cur === "USDT") {
+      const o = official.USDT;
+      return "Binance P2P" + (o && o.fecha ? " · " + o.fecha : "") + " · " + r;
+    }
+    const iso = displayIso();
+    return "Tasa BCV" + (iso ? " del " + fmtDia(iso) : "") + " · " + r;
+  }
+
+  function sharePayload() {
+    const r = currentRate();
+    const hayCalculo = !!els.bs.value && !!els.fx.value && isFinite(r) && r > 0;
+    if (!hayCalculo) {
+      return {
+        title: "Tasa BCV",
+        text: "Calculadora de cambio: bolívares a dólares, euros y USDT con la tasa oficial del BCV.",
+      };
+    }
+    return {
+      title: "Tasa BCV",
+      text: montoTxt(els.fx.value) + " = " + num(els.bs.value) + " Bs\n" + fuenteTxt(),
+    };
+  }
+
+  let shareTimer = 0;
+  function shareFeedback(txt) {
+    clearTimeout(shareTimer);
+    els.shareTxt.textContent = txt;
+    shareTimer = setTimeout(() => { els.shareTxt.textContent = "Compartir"; }, 1900);
+  }
+
+  async function doShare() {
+    const p = sharePayload();
+    if (navigator.share) {
+      // cancelar la hoja nativa lanza AbortError: es un "no quiero", no un fallo
+      try { await navigator.share({ ...p, url: SITE }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(p.text + "\n\n" + SITE); shareFeedback("Copiado"); }
+    catch { shareFeedback("No se pudo"); }
+  }
+
   PRESETS.forEach((v) => {
     const b = document.createElement("button");
     b.type = "button"; b.dataset.v = v;
@@ -574,6 +638,7 @@
   els.bsClear.addEventListener("click", () => clearAmounts(els.bs));
   els.fxClear.addEventListener("click", () => clearAmounts(els.fx));
   els.refresh.addEventListener("click", () => fetchRates(true));
+  els.share.addEventListener("click", doShare);
   els.nextBtn.addEventListener("click", () => { showNext = !showNext; paintRate(); recompute(); });
 
   cur = CURS.includes(store.cur) ? store.cur : "USD";
