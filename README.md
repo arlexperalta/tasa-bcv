@@ -11,7 +11,7 @@ Calculadora de cambio para Venezuela. Convierte bolívares a dólares y euros co
 - Formato venezolano (`1.000.000,00`).
 - Botón para borrar los montos de un toque y empezar de cero.
 - **Compartir contextual**: si hay un cálculo en pantalla comparte el cálculo con su tasa y la fecha de esa tasa; si no, comparte la app. Usa la hoja nativa del sistema (`navigator.share`) y cae al portapapeles donde no exista.
-- Tasa **editable a mano** por si prefieres otra, con un toque para volver a la del BCV.
+- **Tasa del día siguiente**: cuando el BCV ya publicó la de mañana (cada tarde hábil; el viernes, la del lunes), un botón deja ver y calcular con ella y volver a la de hoy.
 - **Funciona sin internet** con la última tasa guardada.
 - Pensada para usarse en el teléfono: campos grandes, lectura clara.
 
