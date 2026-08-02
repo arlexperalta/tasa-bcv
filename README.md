@@ -31,6 +31,25 @@ Es una sola página estática, sin backend ni base de datos. Las tasas se piden 
 
 La última tasa y la moneda elegida se guardan en `localStorage`, así que si se cae la conexión la calculadora sigue sirviendo con el último valor. Todo el código —HTML, CSS y JavaScript— vive en `index.html`, sin dependencias ni build.
 
+## Histórico
+
+La app no guardaba nada: cada tasa vivía solo en el `localStorage` del visitante y se pisaba al día siguiente. Desde el 2026-08-02 hay una serie propia en `collector/`, y el mismo proceso que la escribe vigila las fuentes.
+
+- **`recolectar.py`** — cron horario en Contabo. Pide por `/api/bcv` y `/api/usdt` **del propio sitio**, no directo a las fuentes: así vigila el camino real que recorre el usuario, proxy incluido. Anota la fila en `/opt/tasa-historico/tasa.db` (SQLite) y avisa por Telegram cuando una fuente lleva **dos corridas seguidas** sin dato bueno, y otra vez cuando vuelve. Dos y no una porque CriptoYa parpadea: en la primera corrida contra producción devolvió HTTP 200 con el cuerpo vacío y al repetir respondió bien.
+- **`backfill_bcv.py`** — corrida única. El BCV publica su tipo de cambio de referencia en xls trimestrales con una hoja por día hábil, y la columna de **venta** es exactamente el número que muestra la app (verificado contra el home del BCV y contra el `promedio` de dolarapi). O sea que el histórico del BCV no se empieza a guardar: se importa. Cargados **1.160 días, del 2021-10-04 al 2026-08-03**.
+- **`exportar.py`** — cron horario. Saca la serie a `/historico.json` (~40 KB, ~12 gzipeado): días del BCV, agregado diario del USDT y la variación del dólar a 7/30/90/365 días. La base cruda se queda fuera de la raíz web.
+
+**Por qué el USDT es el urgente y el BCV no.** El BCV está archivado por el propio BCV y se puede traer cuando sea. Binance P2P no: CriptoYa da spot y ya. La hora que no se anota se pierde para siempre, y es la serie que se mueve intradía y muestra la brecha contra la oficial.
+
+Dos trampas que costaron sangre y por eso están escritas en el código:
+
+- **La reconversión monetaria del 1-oct-2021** (1.000.000 Bs → 1 Bs). El Q1-2021 trae el dólar a 2.070.854 y el Q4 a 4,17. La serie arranca en la reconversión y lo anterior se descarta por fecha, no por archivo: un archivo de Q4 puede traer hojas de septiembre.
+- **Los nombres de archivo del BCV mienten.** `2_1_2c23_smc.xls` debería ser jul-sep 2023 y trae dos hojas de octubre; los 60 días de ese trimestre viven en `2_1_2c23_smc_60.xls`, que solo aparece en la página 2 del listado. Adivinar el patrón dejaba un hueco de 91 días sin avisar a nadie. Por eso el backfill raspa el listado además de probar el patrón, y **canta los huecos** al terminar: una serie con agujeros callados es peor que no tenerla, porque el gráfico dibuja una recta donde no hubo dato.
+
+Los saltos de 4-5 días que quedan son feriados (carnaval, semana santa, Carabobo). El BCV no publica fines de semana ni días no hábiles.
+
+`backfill_bcv.py` necesita `xlrd`, que Contabo no tiene: corre en la torre y la base viaja por `scp`.
+
 ## Correr localmente
 
 No hay nada que instalar. Abre `index.html` en el navegador, o levanta un servidor estático:
