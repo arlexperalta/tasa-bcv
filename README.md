@@ -35,7 +35,7 @@ La última tasa y la moneda elegida se guardan en `localStorage`, así que si se
 
 La app no guardaba nada: cada tasa vivía solo en el `localStorage` del visitante y se pisaba al día siguiente. Desde el 2026-08-02 hay una serie propia en `collector/`, y el mismo proceso que la escribe vigila las fuentes.
 
-- **`recolectar.py`** — cron horario en Contabo. Pide por `/api/bcv` y `/api/usdt` **del propio sitio**, no directo a las fuentes: así vigila el camino real que recorre el usuario, proxy incluido. Anota la fila en `/opt/tasa-historico/tasa.db` (SQLite) y avisa por Telegram cuando una fuente lleva **dos corridas seguidas** sin dato bueno, y otra vez cuando vuelve. Dos y no una porque CriptoYa parpadea: en la primera corrida contra producción devolvió HTTP 200 con el cuerpo vacío y al repetir respondió bien.
+- **`recolectar.py`** — cron horario en Contabo. Pide por `/api/bcv` y `/api/usdt` **del propio sitio**, no directo a las fuentes: así vigila el camino real que recorre el usuario, proxy incluido. Anota la fila en `/opt/tasa-historico/tasa.db` (SQLite) y avisa por Telegram cuando una fuente lleva **dos corridas seguidas** sin dato bueno, y otra vez cuando vuelve.
 - **`backfill_bcv.py`** — corrida única. El BCV publica su tipo de cambio de referencia en xls trimestrales con una hoja por día hábil, y la columna de **venta** es exactamente el número que muestra la app (verificado contra el home del BCV y contra el `promedio` de dolarapi). O sea que el histórico del BCV no se empieza a guardar: se importa. Cargados **1.160 días, del 2021-10-04 al 2026-08-03**.
 - **`exportar.py`** — cron horario. Saca la serie a `/historico.json` (~40 KB, ~12 gzipeado): días del BCV, agregado diario del USDT y la variación del dólar a 7/30/90/365 días. La base cruda se queda fuera de la raíz web.
 
@@ -47,6 +47,24 @@ Dos trampas que costaron sangre y por eso están escritas en el código:
 - **Los nombres de archivo del BCV mienten.** `2_1_2c23_smc.xls` debería ser jul-sep 2023 y trae dos hojas de octubre; los 60 días de ese trimestre viven en `2_1_2c23_smc_60.xls`, que solo aparece en la página 2 del listado. Adivinar el patrón dejaba un hueco de 91 días sin avisar a nadie. Por eso el backfill raspa el listado además de probar el patrón, y **canta los huecos** al terminar: una serie con agujeros callados es peor que no tenerla, porque el gráfico dibuja una recta donde no hubo dato.
 
 Los saltos de 4-5 días que quedan son feriados (carnaval, semana santa, Carabobo). El BCV no publica fines de semana ni días no hábiles.
+
+### El bug que el vigía encontró el primer día
+
+A las tres horas de instalarse, el colector alertó: `/api/usdt` fallaba en cada corrida. El cuerpo llegaba así —
+
+```
+(\x1f\x8b... X\x8e d{"ask":845,"totalAbidBime":1785696467}
+```
+
+`\x1f\x8b` es la firma de gzip, y `"totalAbidBime"` no es JSON roto: son **`"totalAsk"`, `"bid"` y `"time"` de dos respuestas distintas pisadas una encima de la otra**.
+
+CriptoYa manda `Vary: Accept-Encoding` y responde comprimido o plano según lo que pida el cliente. Nuestro proxy ignoraba ese `Vary` y cacheaba todo bajo una sola clave (`usdt-ves-100`), así que la respuesta gzipeada de un navegador y la plana de un cliente sin gzip terminaban compitiendo por **el mismo archivo de caché**. Quien leía justo durante la sobreescritura se llevaba un cuerpo partido: cabeza de una, cola de la otra.
+
+Para el usuario eso era USDT en `sin datos · actualiza` sin razón aparente, intermitente y por eso invisible durante semanas. Con ~1.500 personas al mes, le tocó a gente real.
+
+El arreglo es `proxy_set_header Accept-Encoding "";` en `/api/usdt`: si la fuente responde siempre plano, existe una sola variante posible y la clave única vuelve a ser correcta. `/api/bcv` ya lo hacía por otro motivo. Verificado con 40 peticiones alternando clientes con y sin gzip a lo largo de dos vencimientos y medio de caché: 0 fallos, contra 3 de 3 corridas fallando antes.
+
+El colector además pide `identity` explícito y descomprime si igual le llega gzip. El arreglo de fondo está en el proxy; eso es el cinturón.
 
 `backfill_bcv.py` necesita `xlrd`, que Contabo no tiene: corre en la torre y la base viaja por `scp`.
 

@@ -17,6 +17,7 @@ real). Una falla suelta es ruido: CriptoYa bloquea por IP de vez en cuando y se
 recupera solo.
 """
 
+import gzip
 import json
 import os
 import re
@@ -54,20 +55,30 @@ def iso(dt):
 def pedir(ruta, timeout=20, intentos=2, espera=5):
     """Trae una ruta del sitio, reintentando una vez.
 
-    El reintento no es adorno: en la primera corrida contra producción /api/usdt
-    devolvió HTTP 200 con el cuerpo VACÍO (el proxy renovando su caché de 60s), y
-    al repetir respondió bien. Sin reintento ese parpadeo mete un hueco en la
-    serie y empuja el contador de la alerta. Un cuerpo vacío cuenta como fallo.
+    Pide `identity` explícito y aun así sabe descomprimir: el 2026-08-02 este
+    colector falló tres corridas seguidas contra /api/usdt recibiendo un cuerpo
+    que empezaba con la firma de gzip y terminaba en JSON plano — dos respuestas
+    distintas peleándose el mismo archivo de caché de nginx (ver el comentario de
+    /api/usdt en nginx/default.conf). El arreglo de fondo está en el proxy; esto
+    es el cinturón por si algún día vuelve a colarse una respuesta comprimida.
     """
     ultimo = None
     for intento in range(intentos):
         try:
             req = urllib.request.Request(
                 BASE + ruta,
-                headers={"User-Agent": "tasa-historico/1.0", "Cache-Control": "no-store"},
+                headers={
+                    "User-Agent": "tasa-historico/1.0",
+                    "Cache-Control": "no-store",
+                    "Accept-Encoding": "identity",
+                },
             )
             with urllib.request.urlopen(req, timeout=timeout) as res:
-                cuerpo = res.read().decode("utf-8", "replace").strip()
+                crudo = res.read()
+                comprimido = res.headers.get("Content-Encoding", "") == "gzip"
+            if comprimido or crudo[:2] == b"\x1f\x8b":
+                crudo = gzip.decompress(crudo)
+            cuerpo = crudo.decode("utf-8", "replace").strip()
             if not cuerpo:
                 raise ValueError(f"{ruta} respondió 200 con cuerpo vacío")
             return cuerpo
