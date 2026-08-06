@@ -157,6 +157,18 @@
   .next .nu { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--inv-muted); letter-spacing: .05em; }
 
   /* pie */
+  /* cruce a la pieza de aduana — discreto, pero no escondido como el pie */
+  .cruce {
+    display: flex; align-items: center; gap: 12px; margin-top: 18px;
+    padding: 13px 14px; border-radius: 14px; text-decoration: none;
+    background: var(--field); border: 1px solid var(--line); color: var(--text);
+  }
+  .cruce:active { background: var(--pill); }
+  .cruce-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .cruce-txt b { font-size: 14px; font-weight: 600; }
+  .cruce-txt span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .cruce svg { width: 18px; height: 18px; color: var(--accent); flex: none; margin-left: auto; }
+
   footer { margin-top: auto; padding-top: 22px; }
   .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   /* en pantallas angostas los botones bajan a su propia fila antes que dejar
@@ -228,6 +240,18 @@
   </div>
 
   <button class="next" id="nextBtn" aria-pressed="false" hidden></button>
+
+  <!-- Cruce contextual hacia la pieza de aduana. Va aquí y no en el pie a
+       propósito: el pie lleva un enlace al estante desde el 2-ago y midió
+       0,67% de CTR (2 clics en 298 visitas). Quien acaba de convertir un
+       monto es justo quien está por comprar afuera. -->
+  <a class="cruce" href="https://aduana.arlexperalta.com/?utm_source=tasa&amp;utm_medium=app&amp;utm_campaign=aduana" target="_blank" rel="noopener">
+    <div class="cruce-txt">
+      <b>¿Vas a comprar afuera?</b>
+      <span>Calcula lo que pagas al traerlo por courier, con el arancel del decreto.</span>
+    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+  </a>
 
   <footer>
     <div class="foot-row">
