@@ -622,6 +622,20 @@
     };
   }
 
+  // Manda un evento a Umami sin poder romper nada: si el script no cargó, si hay
+  // un bloqueador o si la llamada falla, la app sigue igual. Medir no puede
+  // estropear la función que mide.
+  //
+  // LÍMITE DE LO QUE ESTOS NÚMEROS DICEN, y va escrito aquí a propósito:
+  // miden INTENCIÓN DE COMPARTIR, nunca reenvíos. `navigator.share` no informa a
+  // dónde fue el mensaje ni si se envió, y copiar al portapapeles no garantiza
+  // que se pegue en ningún sitio. Un "compartir_nativo_ok" es "el sistema aceptó
+  // la hoja", no "alguien recibió el link".
+  function medir(evento, datos) {
+    try { if (window.umami && window.umami.track) window.umami.track(evento, datos); }
+    catch (e) { /* la medición nunca tumba el compartir */ }
+  }
+
   let shareTimer = 0;
   function shareFeedback(txt) {
     clearTimeout(shareTimer);
@@ -631,13 +645,35 @@
 
   async function doShare() {
     const p = sharePayload();
+    // Con cálculo en pantalla comparte el monto; sin él, la app. Son dos
+    // intenciones distintas y conviene poder separarlas después.
+    const con_calculo = p.text.indexOf(" Bs\n") !== -1;
+    medir("compartir_intento", { con_calculo, nativo: !!navigator.share });
+
     if (navigator.share) {
       // cancelar la hoja nativa lanza AbortError: es un "no quiero", no un fallo
-      try { await navigator.share({ ...p, url: SITE }); return; }
-      catch (e) { if (e && e.name === "AbortError") return; }
+      try {
+        await navigator.share({ ...p, url: SITE });
+        medir("compartir_nativo_ok", { con_calculo });
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") {
+          // Se sigue tragando en la experiencia —cancelar no es un error— pero se
+          // cuenta: "abrió la hoja y se arrepintió" y "no la abrió" son cosas
+          // distintas, y sin este evento las dos se verían igual.
+          medir("compartir_nativo_cancelado", { con_calculo });
+          return;
+        }
+      }
     }
-    try { await navigator.clipboard.writeText(p.text + "\n\n" + SITE); shareFeedback("Copiado"); }
-    catch { shareFeedback("No se pudo"); }
+    try {
+      await navigator.clipboard.writeText(p.text + "\n\n" + SITE);
+      medir("compartir_copiado", { con_calculo });
+      shareFeedback("Copiado");
+    } catch {
+      medir("compartir_fallo", { con_calculo });
+      shareFeedback("No se pudo");
+    }
   }
 
   PRESETS.forEach((v) => {
