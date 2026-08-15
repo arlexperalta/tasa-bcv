@@ -258,6 +258,11 @@
       <div class="credits">
         <div id="srcLine">Tasa oficial del BCV · vía dolarapi</div>
         <div class="brand">Hecho por <b>Arlex Peralta</b> · <a href="https://arlexperalta.com/es/lab/?utm_source=tasa&amp;utm_medium=app&amp;utm_campaign=estante" target="_blank" rel="noopener">más apps gratis como esta</a></div>
+        <!-- Va dentro de .credits y NO en .acts a proposito: sumar un tercer
+             elemento a .foot-row reabriria la pelea de layout del 25-jul, cuando
+             hubo que quitarle el texto a "Actualizar" para que cupiera
+             "Compartir". Aqui solo suma una linea de alto. -->
+        <div class="brand"><a id="historico" href="/historico.json" target="_blank" rel="noopener">el dólar día a día · archivo de datos</a></div>
       </div>
       <div class="acts">
         <button class="btn ico" id="refresh" aria-label="Actualizar la tasa">
@@ -675,6 +680,20 @@
       shareFeedback("No se pudo");
     }
   }
+
+  // Mide si alguien quiere el histórico. NO lleva utm: el destino es un .json
+  // del propio dominio, y un archivo estático no ejecuta el script de Umami —
+  // el utm no lo registraría nadie. Por eso se cuenta en el clic.
+  //
+  // LÍMITE DE ESTE NÚMERO, escrito antes de que el número exista:
+  // mide el PISO de la demanda, no la demanda. El enlace dice "archivo de datos"
+  // a propósito —no promete una pantalla— y eso frena a gente que sí querría ver
+  // el histórico dibujado. Así que un cero aquí NO prueba que no haya demanda:
+  // prueba que no hay demanda de un archivo crudo. Lo que sí concluye es lo
+  // contrario: si con un enlace honesto y poco atractivo lo abren igual, la
+  // demanda es real y justifica construir la vista.
+  const elHist = $("historico");
+  if (elHist) elHist.addEventListener("click", () => medir("historico_abierto"));
 
   PRESETS.forEach((v) => {
     const b = document.createElement("button");
