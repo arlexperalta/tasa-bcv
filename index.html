@@ -116,6 +116,29 @@
     font-variant-numeric: tabular-nums;
   }
   .delta svg { width: 10px; height: 10px; flex: none; }
+
+  /* La variación es también la puerta al historial. Va aquí y NO en el pie
+     porque el pie está medido: 0,67-1,7% de CTR. Poner detrás de él una
+     pantalla que se quiere que se vea es enterrarla. Aquí está pegada al único
+     número que la gente vino a mirar, y el gesto es el natural: ves que subió,
+     quieres ver cuánto lleva subiendo.
+     El sparkline no es adorno — es lo que dice que hay una gráfica detrás. Un
+     porcentaje suelto no se lee como algo que se pueda tocar. */
+  button.delta {
+    appearance: none; cursor: pointer;
+    border: 1px solid var(--line); background: transparent;
+    /* 7px arriba y abajo, no 5: con 5 la pastilla mide 27px de alto y esto se
+       toca con el pulgar, no con un ratón */
+    padding: 7px 7px 7px 8px; border-radius: 9px; gap: 5px;
+  }
+  button.delta:active { background: var(--field); }
+  button.delta .spark { width: 46px; height: 15px; flex: none; display: none; }
+  button.delta .spark path { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  button.delta .spark circle { fill: var(--accent); }
+  button.delta .chev { width: 11px; height: 11px; color: var(--faint); flex: none; }
+  /* en pantallas muy angostas el sparkline es lo primero que sobra: sin él la
+     pastilla sigue leyéndose como botón, y el número nunca se aprieta */
+  @media (min-width: 361px) { button.delta .spark { display: block; } }
   .delta.up { color: #ff7a6e; }
   .delta.down { color: #46c66d; }
   .delta.flat { color: var(--faint); }
@@ -334,7 +357,7 @@
         <input id="rate" readonly tabindex="-1" aria-label="Tasa en bolívares" />
         <span class="u">Bs</span>
       </span>
-      <span class="delta" id="delta" hidden></span>
+      <button class="delta" id="delta" type="button" hidden></button>
     </span>
   </div>
 
@@ -916,6 +939,28 @@
   // Sin dato no hay número: si el histórico no cargó, la variación no se
   // muestra en gris ni en cero, se esconde. Un cero inventado se lee como
   // "la tasa no se movió", que es una afirmación que no tenemos.
+  // Sparkline de los últimos 30 días. Sin ejes, sin ticks, sin relleno: a este
+  // tamaño solo tiene que decir "hay una forma detrás de este número".
+  const SPK = { w: 46, h: 15, p: 2 };
+  function sparkline(s) {
+    const pts = s.slice(-30);
+    if (pts.length < 2) return "";
+    const v = pts.map((x) => x[1]);
+    const lo = Math.min(...v), hi = Math.max(...v), span = hi - lo || 1;
+    const iw = SPK.w - SPK.p * 2, ih = SPK.h - SPK.p * 2;
+    let d = "";
+    const xy = pts.map((x, i) => [
+      SPK.p + (i / (pts.length - 1)) * iw,
+      SPK.p + ih - ((x[1] - lo) / span) * ih,
+    ]);
+    xy.forEach((c, i) => { d += (i ? "L" : "M") + c[0].toFixed(1) + " " + c[1].toFixed(1); });
+    const f = xy[xy.length - 1];
+    return '<svg class="spark" viewBox="0 0 ' + SPK.w + " " + SPK.h + '" aria-hidden="true">' +
+      '<path d="' + d + '"/><circle cx="' + f[0].toFixed(1) + '" cy="' + f[1].toFixed(1) + '" r="1.8"/></svg>';
+  }
+
+  const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
   function paintDelta() {
     const r = currentRate();
     const a = anterior();
@@ -923,9 +968,10 @@
     const p = pct(r, a.v);
     els.delta.hidden = false;
     els.delta.className = "delta " + claseDe(p);
-    els.delta.innerHTML = flechaDe(p) + "<span>" + signoDe(p) + fmtPct(p) +
-      '</span><span class="dref">vs ' + fmtFecha(a.iso + "T12:00:00-04:00") + "</span>";
-    els.delta.setAttribute("title", "Contra la tasa del " + fmtDia(a.iso));
+    els.delta.innerHTML = sparkline(serieDe(cur)) + flechaDe(p) + "<span>" + signoDe(p) + fmtPct(p) +
+      '</span><span class="dref">vs ' + fmtFecha(a.iso + "T12:00:00-04:00") + "</span>" + CHEV;
+    els.delta.setAttribute("aria-label",
+      "Ver el historial. " + (p > 0 ? "Subió " : p < 0 ? "Bajó " : "Sin cambio, ") + fmtPct(p) + " contra la tasa del " + fmtDia(a.iso));
   }
 
   // ---- la gráfica ---------------------------------------------------------
@@ -1186,8 +1232,11 @@
     plot.addEventListener("pointercancel", salir);
   }
 
-  async function abrirHist() {
-    medir("historico_abierto", { moneda: cur, vista: "pantalla" });
+  // El origen se mide a propósito: hay dos puertas al historial y la razón de
+  // abrir la segunda fue justamente que la del pie no la ve nadie. Sin separar
+  // los clics, dentro de un mes no se podría decir si eso era cierto.
+  async function abrirHist(desde) {
+    medir("historico_abierto", { moneda: cur, desde: desde || "otro" });
     sheet.hidden = false;
     document.body.style.overflow = "hidden";
     renderHist();
@@ -1199,7 +1248,8 @@
     document.body.style.overflow = "";
   }
 
-  if (elHist) elHist.addEventListener("click", (e) => { e.preventDefault(); abrirHist(); });
+  if (elHist) elHist.addEventListener("click", (e) => { e.preventDefault(); abrirHist("pie"); });
+  els.delta.addEventListener("click", () => abrirHist("variacion"));
   $("shClose").addEventListener("click", cerrarHist);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) cerrarHist(); });
   pintarRangos();
