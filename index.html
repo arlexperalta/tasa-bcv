@@ -170,10 +170,16 @@
   .cruce svg { width: 18px; height: 18px; color: var(--accent); flex: none; margin-left: auto; }
 
   footer { margin-top: auto; padding-top: 22px; }
-  .foot-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-  /* en pantallas angostas los botones bajan a su propia fila antes que dejar
-     los créditos partidos en cinco líneas */
-  .credits { font-size: 12px; line-height: 1.7; color: var(--faint); flex: 1 1 200px; }
+  /* Créditos y botones van apilados, no lado a lado. Lo estuvieron mientras los
+     créditos eran dos líneas; con la tercera (el histórico, 15-ago-2026) dejó de
+     caber: el cuerpo mide 480px como máximo y los botones se llevan 169, así que
+     al texto le quedaban 265 y partía "más apps gratis como esta" dejando "esta"
+     sola en un renglón. En el teléfono era peor —los botones envolvían y el
+     margin-left:auto los dejaba colgando a la derecha con 190px de hueco al
+     lado—. Apilado no depende del ancho: el texto usa la línea completa y los
+     botones caen alineados con él. Verificado a 390 y 768px el 16-ago-2026. */
+  .foot-row { display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+  .credits { font-size: 12px; line-height: 1.7; color: var(--faint); }
   .credits .brand { color: var(--muted); }
   .credits .brand b { color: var(--text); font-weight: 600; }
   .credits a { color: var(--accent); text-decoration: none; }
@@ -189,7 +195,7 @@
   .btn.spin svg { animation: spin .8s linear infinite; }
   /* solo ícono: la flecha circular se lee sola y le deja el texto a Compartir */
   .btn.ico { padding: 11px; }
-  .acts { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+  .acts { display: flex; align-items: center; gap: 8px; }
   .made { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 9.5px; color: var(--faint); text-align: center; margin-top: 20px; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
