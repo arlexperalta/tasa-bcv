@@ -1121,7 +1121,13 @@
       '<div class="stats">' +
       statCard("En el tramo", '<span class="delta ' + claseDe(p) + '" style="font-size:19px">' + flechaDe(p) + "<span>" + signoDe(p) + fmtPct(p) + "</span></span>",
         fmtEje(ini[0]) + " → " + fmtEje(fin[0])) +
-      statCard("Hoy", fmt.format(fin[1]) + " Bs", fmtPunto(fin[0])) +
+      // "Último dato" y no "Hoy": el BCV publica por la tarde la tasa con
+      // fecha-valor del día siguiente, y el colector la guarda en cuanto sale.
+      // Verificado en producción el 16-ago-2026 (domingo): la calculadora
+      // mostraba 771,07 —la vigente, del viernes— y esta tarjeta decía "Hoy
+      // 772,54", que es la del lunes. Dos "hoy" distintos en la misma app. La
+      // fecha de abajo ya dice de cuándo es; el rótulo solo tenía que no mentir.
+      statCard("Último dato", fmt.format(fin[1]) + " Bs", fmtPunto(fin[0])) +
       statCard("Más alta", fmt.format(vals[iMax]) + " Bs", fmtPunto(s[iMax][0])) +
       statCard("Más baja", fmt.format(vals[iMin]) + " Bs", fmtPunto(s[iMin][0])) +
       "</div>" +
