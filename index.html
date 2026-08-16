@@ -339,8 +339,17 @@
 <script defer src="https://analytics.arlexperalta.com/script.js" data-website-id="ff25e017-35c2-44e5-846c-95db23345c00"></script>
 </head>
 <body>
+  <!-- h1 y no un div suelto: la página tenía CERO encabezados hasta el 16-ago y
+       desde esa tarde tenía un h2 (el de la pantalla del historial) colgando sin
+       nada encima. Y dice "Tasa BCV" porque ese ya era el nombre de la pieza en
+       el title, en el manifest y en el título de iOS — en todos lados menos en
+       la propia página. Resulta que además es el término exacto que la gente
+       teclea: de las seis búsquedas por las que Google ya la muestra, la
+       intersección son esas dos palabras. El nombre propio ya era la keyword.
+       "Calculadora de cambio" se queda en el title y en la description, que es
+       donde hace de descriptor sin pelearse con la fecha por el ancho. -->
   <header>
-    <div class="tag"><span class="dash"></span> Calculadora de cambio</div>
+    <h1 class="tag"><span class="dash"></span> Tasa BCV</h1>
     <span class="date" id="fecha">Cargando…</span>
   </header>
 
