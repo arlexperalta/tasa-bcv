@@ -97,7 +97,29 @@
   .rate .l { display: flex; align-items: center; gap: 9px; font-size: 10.5px; color: var(--muted); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
   .dot.on { background: var(--accent); box-shadow: 0 0 0 0 rgba(228,36,20,.5); animation: pulse 2.6s infinite; }
-  .rate .r { display: flex; align-items: baseline; gap: 5px; }
+  .rate .r { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .rate .rv { display: flex; align-items: baseline; gap: 5px; }
+
+  /* Variación contra la publicación anterior. La flecha y el signo son el canal
+     real; el color solo refuerza. No es un adorno de accesibilidad: el rojo y el
+     verde que pasan contraste sobre este fondo quedan a ΔE 1.5 en deuteranopia
+     (medido), o sea el MISMO color para buena parte de los daltónicos. Con la
+     flecha y el signo delante, el dato llega igual. Si alguien viene a "limpiar"
+     esto quitando la flecha para dejar solo el color, rompe justo eso.
+
+     Y el rojo va hacia ARRIBA a propósito, al revés de la bolsa: quien abre esta
+     app no es un trader mirando una posición, es alguien viendo cuánto vale su
+     sueldo. Que el dólar suba es la mala noticia. */
+  .delta {
+    display: flex; align-items: center; gap: 4px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta svg { width: 10px; height: 10px; flex: none; }
+  .delta.up { color: #ff7a6e; }
+  .delta.down { color: #46c66d; }
+  .delta.flat { color: var(--faint); }
+  .delta .dref { color: var(--faint); }
   .rate .r input {
     font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums;
@@ -198,6 +220,85 @@
   .acts { display: flex; align-items: center; gap: 8px; }
   .made { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 9.5px; color: var(--faint); text-align: center; margin-top: 20px; }
 
+  /* ---- pantalla del historial ---------------------------------------------
+     Va en la misma página y no en otra URL: la app es un solo archivo sin build
+     ni router, y partirla en dos sería estrenar infraestructura para una vista.
+     Se comporta como pantalla y no como modal —ocupa todo, tiene su cabecera y
+     su botón de volver— porque en el teléfono un modal a media altura deja la
+     gráfica en una franja donde no se lee nada. */
+  .sheet {
+    position: fixed; inset: 0; z-index: 20; background: var(--bg);
+    display: flex; flex-direction: column;
+    padding: calc(env(safe-area-inset-top) + 8px) 16px calc(16px + env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto;
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  .sheet[hidden] { display: none; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px 18px; }
+  .sheet-head h2 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .sheet-head .sub { font-family: var(--mono); font-size: 10px; color: var(--faint); letter-spacing: .06em; text-transform: uppercase; margin-top: 3px; }
+  .x {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--muted);
+    width: 34px; height: 34px; border-radius: 10px; flex: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .x:active { background: var(--field); color: var(--text); }
+  .x svg { width: 15px; height: 15px; }
+
+  /* una sola fila de filtros arriba de todo lo que alcanzan, no dentro de la
+     gráfica: el rango manda sobre el gráfico Y sobre los números de abajo */
+  .ranges { display: flex; gap: 5px; margin-bottom: 16px; }
+  .ranges button {
+    flex: 1; appearance: none; border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
+    color: var(--muted); background: var(--track); padding: 9px 0; border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .ranges button[aria-pressed="true"] { background: var(--pill); color: var(--text); }
+
+  .plot { position: relative; touch-action: pan-y; }
+  .plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .gridline { stroke: var(--line); stroke-width: 1; }
+  .axis-t { font-family: var(--mono); font-size: 9px; fill: var(--faint); letter-spacing: .04em; }
+  .serie { fill: none; stroke: var(--text); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .serie-fill { fill: var(--text); opacity: .1; stroke: none; }
+  /* el punto de hoy en el acento, con su anillo de superficie para que no se
+     confunda con la línea cuando pasa cerca de un borde */
+  .dot-end { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+  .cross { stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  .dot-hit { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+  .logtag { font-family: var(--mono); font-size: 9px; color: var(--faint); letter-spacing: .06em; text-align: right; margin-top: 6px; }
+
+  .tip {
+    position: absolute; top: 0; pointer-events: none; z-index: 2;
+    background: var(--pill); border-radius: 9px; padding: 7px 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35); white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  .tip[hidden] { display: none; }
+  .tip .tv { font-family: var(--display); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tip .td { font-family: var(--mono); font-size: 9.5px; color: var(--inv-bg); letter-spacing: .04em; margin-top: 1px; }
+
+  /* los números que la gráfica no rotula. Existen para que ningún valor dependa
+     de acertarle con el dedo a un punto: el tooltip acompaña, no es la vía. */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 22px; }
+  .stat { background: var(--field); border-radius: 12px; padding: 12px 14px; }
+  .stat .k { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+  .stat .v { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin-top: 5px; }
+  .stat .m { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 2px; letter-spacing: .03em; }
+
+  .since {
+    display: flex; align-items: center; gap: 11px; margin-top: 12px;
+    background: var(--field); border-radius: 12px; padding: 13px 14px;
+  }
+  .since .st { font-size: 13px; line-height: 1.45; }
+  .since .st b { font-weight: 600; }
+  .since .st span { color: var(--muted); }
+
+  .sheet-foot { margin-top: 18px; font-size: 11.5px; line-height: 1.65; color: var(--faint); }
+  .sheet-foot a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 0; line-height: 1.6; }
+
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(228,36,20,.5); } 70% { box-shadow: 0 0 0 6px rgba(228,36,20,0); } 100% { box-shadow: 0 0 0 0 rgba(228,36,20,0); } }
   @media (prefers-reduced-motion: reduce) { .btn.spin svg, .dot.on { animation: none; } }
@@ -219,8 +320,11 @@
   <div class="rate">
     <span class="l"><span class="dot" id="live"></span> <span id="rateLabel">Tasa del día · BCV</span></span>
     <span class="r" id="rateWrap">
-      <input id="rate" readonly tabindex="-1" aria-label="Tasa en bolívares" />
-      <span class="u">Bs</span>
+      <span class="rv">
+        <input id="rate" readonly tabindex="-1" aria-label="Tasa en bolívares" />
+        <span class="u">Bs</span>
+      </span>
+      <span class="delta" id="delta" hidden></span>
     </span>
   </div>
 
@@ -270,7 +374,7 @@
              elemento a .foot-row reabriria la pelea de layout del 25-jul, cuando
              hubo que quitarle el texto a "Actualizar" para que cupiera
              "Compartir". Aqui solo suma una linea de alto. -->
-        <div class="brand"><a id="historico" href="/historico.json" target="_blank" rel="noopener">el dólar día a día · archivo de datos</a></div>
+        <div class="brand"><a id="historico" href="/historico.json">ver el dólar día a día</a></div>
       </div>
       <div class="acts">
         <button class="btn ico" id="refresh" aria-label="Actualizar la tasa">
@@ -284,6 +388,23 @@
     </div>
     <div class="made">Hecho en Venezuela</div>
   </footer>
+
+  <!-- El enlace del pie conserva su href al JSON crudo a propósito: si el
+       histórico no carga o el JS se cae, sigue llevando al dato en vez de a
+       nada. El JS lo intercepta cuando puede abrir esta pantalla. -->
+  <section class="sheet" id="sheet" hidden aria-label="Historial de la tasa">
+    <div class="sheet-head">
+      <div>
+        <h2 id="shTitle">El dólar día a día</h2>
+        <div class="sub" id="shSub">Tasa oficial del BCV</div>
+      </div>
+      <button class="x" id="shClose" aria-label="Volver a la calculadora">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="ranges" id="ranges" role="group" aria-label="Rango de tiempo"></div>
+    <div id="shBody"></div>
+  </section>
 
 <script>
 (() => {
@@ -310,7 +431,7 @@
   const fmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const $ = (id) => document.getElementById(id);
   const els = {
-    live: $("live"), fecha: $("fecha"), rate: $("rate"),
+    live: $("live"), fecha: $("fecha"), rate: $("rate"), delta: $("delta"),
     rateLabel: $("rateLabel"), srcLine: $("srcLine"),
     bs: $("bs"), fx: $("fx"), fxSym: $("fxSym"), fxLabel: $("fxLabel"),
     bsSub: $("bsSub"), fxSub: $("fxSub"), refresh: $("refresh"),
@@ -436,6 +557,23 @@
     }
     else { els.fecha.textContent = "sin datos · actualiza"; els.live.classList.remove("on"); }
     paintNextBtn();
+    paintDelta();
+    recordarVisto();
+  }
+
+  // Deja anotado lo que este teléfono está viendo ahora, para que la próxima
+  // visita pueda decir "subió tanto desde que la viste". Se escribe DESPUÉS de
+  // que vistoPrev copió lo anterior, nunca antes: al revés, la comparación
+  // siempre daría cero contra sí misma.
+  function recordarVisto() {
+    const r = currentRate();
+    if (!isFinite(r) || r <= 0) return;
+    // la tasa futura no cuenta como "vista": es la de mañana, y compararse
+    // contra ella mañana daría cero cuando en realidad sí se movió
+    if (cur !== "USDT" && showNext) return;
+    if (!store.visto || typeof store.visto !== "object") store.visto = {};
+    store.visto[cur] = { v: r, iso: (cur === "USDT" ? hoyIso() : (displayIso() || hoyIso())) };
+    save();
   }
 
   // el botón solo existe cuando hay tasa de hoy Y una futura que ofrecer
@@ -500,11 +638,16 @@
     updateClears(); target.focus();
   }
 
+  // "El dólar día a día" con el euro en pantalla es sencillamente falso; el
+  // enlace del pie y el título de la pantalla salen los dos de aquí.
+  const tituloSerie = () => cur === "USDT" ? "el USDT día a día" : (cur === "EUR" ? "el euro día a día" : "el dólar día a día");
+
   function paintCurrency() {
     const m = META[cur];
     els.fxSym.textContent = m.sym;
     els.fxLabel.textContent = m.label;
     els.srcLine.textContent = m.src;
+    if (elHist) elHist.textContent = "ver " + tituloSerie();
     els.fx.setAttribute("aria-label", "Monto en " + (cur === "USDT" ? m.label : m.label.toLowerCase()));
     els.tabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.cur === cur)));
     paintRate(); recompute();
@@ -689,19 +832,361 @@
     }
   }
 
-  // Mide si alguien quiere el histórico. NO lleva utm: el destino es un .json
-  // del propio dominio, y un archivo estático no ejecuta el script de Umami —
-  // el utm no lo registraría nadie. Por eso se cuenta en el clic.
+  // ---- histórico ----------------------------------------------------------
+  // Mide si alguien quiere el histórico. NO lleva utm: cuando el destino era un
+  // .json del propio dominio, un archivo estático no ejecuta el script de Umami.
+  // Ahora abre una pantalla dentro de la app, así que el clic sigue siendo el
+  // único sitio donde contarlo.
   //
-  // LÍMITE DE ESTE NÚMERO, escrito antes de que el número exista:
-  // mide el PISO de la demanda, no la demanda. El enlace dice "archivo de datos"
-  // a propósito —no promete una pantalla— y eso frena a gente que sí querría ver
-  // el histórico dibujado. Así que un cero aquí NO prueba que no haya demanda:
-  // prueba que no hay demanda de un archivo crudo. Lo que sí concluye es lo
-  // contrario: si con un enlace honesto y poco atractivo lo abren igual, la
-  // demanda es real y justifica construir la vista.
+  // LO QUE ESTE NÚMERO YA NO PUEDE COMPARARSE CONTRA LO ANTERIOR:
+  // del 15 al 16-ago-2026 el enlace decía "archivo de datos" y llevaba al JSON
+  // crudo. Medía el PISO de la demanda: quien hacía clic quería el dato aunque
+  // le ofrecieran un archivo. Desde el 16-ago dice "ver el dólar día a día" y
+  // abre una gráfica. Son dos ofertas distintas y sus cifras NO son la misma
+  // serie: un salto a partir de hoy es del enlace nuevo, no de más demanda.
   const elHist = $("historico");
-  if (elHist) elHist.addEventListener("click", () => medir("historico_abierto"));
+
+  let hist = null;         // /historico.json, cargado una sola vez y diferido
+  let histErr = false;
+  let rango = "90d";
+  // Lo que este teléfono vio la última vez que abrió la app. Se lee ANTES de
+  // pisarlo con lo de hoy: si se guardara primero, "desde que la viste" sería
+  // siempre cero y la línea no diría nada.
+  const vistoPrev = (store.visto && typeof store.visto === "object") ? { ...store.visto } : {};
+
+  const RANGOS = [
+    { k: "30d", t: "30 días", d: 30 },
+    { k: "90d", t: "90 días", d: 90 },
+    { k: "1a", t: "1 año", d: 365 },
+    { k: "todo", t: "Todo", d: 0 },
+  ];
+
+  async function cargarHist() {
+    if (hist || histErr) return hist;
+    try {
+      const res = await fetch("/historico.json", { cache: "default" });
+      if (!res.ok) throw new Error(res.status);
+      hist = await res.json();
+    } catch { histErr = true; }
+    return hist;
+  }
+
+  // [[iso, valor], …] ya ordenada y sin huecos nulos. El euro falta en algunos
+  // días del BCV y el USDT vive en otra serie con otra forma.
+  function serieDe(k) {
+    if (!hist) return [];
+    if (k === "USDT") {
+      const s = (hist.usdt && hist.usdt.serie) || [];
+      return s.map((r) => [r[0], Number(r[1])]).filter((r) => isFinite(r[1]) && r[1] > 0);
+    }
+    const s = (hist.bcv && hist.bcv.serie) || [];
+    const i = k === "EUR" ? 2 : 1;
+    return s.map((r) => [r[0], Number(r[i])]).filter((r) => isFinite(r[1]) && r[1] > 0);
+  }
+
+  // La publicación anterior a la que está en pantalla. Para USD/EUR eso es la
+  // fecha-valor previa del BCV; para USDT, el último día cerrado de la serie.
+  function anterior() {
+    const s = serieDe(cur);
+    if (!s.length) return null;
+    const ref = cur === "USDT" ? hoyIso() : (displayIso() || hoyIso());
+    for (let i = s.length - 1; i >= 0; i--) if (s[i][0] < ref) return { iso: s[i][0], v: s[i][1] };
+    return null;
+  }
+
+  const pct = (a, b) => ((a - b) / b) * 100;
+  const fmtPct = (p) => (Math.abs(p) < 0.005 ? "0,00" : fmt.format(Math.abs(p))) + "%";
+  const FLECHA_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  const FLECHA_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>';
+
+  function claseDe(p) { return Math.abs(p) < 0.005 ? "flat" : (p > 0 ? "up" : "down"); }
+  function flechaDe(p) { return Math.abs(p) < 0.005 ? "" : (p > 0 ? FLECHA_UP : FLECHA_DN); }
+  function signoDe(p) { return Math.abs(p) < 0.005 ? "" : (p > 0 ? "+" : "−"); }
+
+  // Sin dato no hay número: si el histórico no cargó, la variación no se
+  // muestra en gris ni en cero, se esconde. Un cero inventado se lee como
+  // "la tasa no se movió", que es una afirmación que no tenemos.
+  function paintDelta() {
+    const r = currentRate();
+    const a = anterior();
+    if (!isFinite(r) || r <= 0 || !a) { els.delta.hidden = true; return; }
+    const p = pct(r, a.v);
+    els.delta.hidden = false;
+    els.delta.className = "delta " + claseDe(p);
+    els.delta.innerHTML = flechaDe(p) + "<span>" + signoDe(p) + fmtPct(p) +
+      '</span><span class="dref">vs ' + fmtFecha(a.iso + "T12:00:00-04:00") + "</span>";
+    els.delta.setAttribute("title", "Contra la tasa del " + fmtDia(a.iso));
+  }
+
+  // ---- la gráfica ---------------------------------------------------------
+  // SVG a mano: la app no tiene una sola dependencia y no se va a estrenar una
+  // librería de charts de 200 KB para dibujar una línea en un teléfono.
+  // r=14 y no 8: el punto de hoy vive en el extremo derecho y con menos margen
+  // queda montado en el borde aunque el svg no lo recorte
+  const VB = { w: 340, h: 200, l: 4, r: 14, t: 14, b: 24 };
+
+  function recorta(s) {
+    const cfg = RANGOS.find((x) => x.k === rango) || RANGOS[1];
+    if (!cfg.d) return s;
+    const corte = new Date(Date.now() - cfg.d * 86400000).toISOString().slice(0, 10);
+    const out = s.filter((r) => r[0] >= corte);
+    return out.length >= 2 ? out : s.slice(-2);
+  }
+
+  // 1.170 puntos en 330px son ~3,5 por píxel. Se baja a 320 con paso uniforme y
+  // el último SIEMPRE entra: el extremo derecho es "hoy" y perderlo movería el
+  // punto rojo a un día que no es.
+  function ralea(s, max) {
+    if (s.length <= max) return s;
+    const paso = (s.length - 1) / (max - 1), out = [];
+    for (let i = 0; i < max - 1; i++) out.push(s[Math.round(i * paso)]);
+    out.push(s[s.length - 1]);
+    return out;
+  }
+
+  function ticksY(min, max, log) {
+    const out = [];
+    if (log) {
+      // En log los cortes se ponen en números que alguien reconoce (10, 50,
+      // 100…), no en potencias fraccionarias del rango: un eje rotulado
+      // "23,72" y "135" no lo lee nadie, aunque esté matemáticamente repartido.
+      for (const fam of [[1, 2, 5], [1, 5], [1]]) {
+        out.length = 0;
+        for (let e = Math.floor(Math.log10(min)); e <= Math.ceil(Math.log10(max)); e++) {
+          for (const m of fam) { const v = m * Math.pow(10, e); if (v >= min && v <= max) out.push(v); }
+        }
+        if (out.length <= 5) break;
+      }
+      return out.slice();
+    }
+    const span = max - min;
+    const paso = Math.pow(10, Math.floor(Math.log10(span / 3)));
+    const mult = [1, 2, 2.5, 5, 10].find((m) => span / (paso * m) <= 3.5) || 10;
+    const step = paso * mult;
+    for (let v = Math.ceil(min / step) * step; v <= max; v += step) out.push(v);
+    return out.length >= 2 ? out : [min, max];
+  }
+
+  // los decimales se muestran solo si el corte los tiene: en el eje logarítmico
+  // los cortes son 10, 50, 100, 500 y escribir "50,00" al lado de "100" se lee
+  // como si fueran dos escalas distintas
+  const fmtTick = (v) => Math.abs(v - Math.round(v)) < 1e-9
+    ? new Intl.NumberFormat("es-VE", { maximumFractionDigits: 0 }).format(Math.round(v))
+    : new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+  // con año: para el "guardados desde", donde un "4 oct" sin año no dice si la
+  // serie tiene diez meses o cinco años
+  function fmtLargo(iso) {
+    const d = new Date(iso + "T12:00:00-04:00");
+    return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { day: "numeric", month: "short", year: "numeric" }).replace(/\./g, "");
+  }
+
+  // Lapso REAL del tramo dibujado, no el preset elegido. Son cosas distintas
+  // en cuanto una serie es más corta que su rango: el USDT lleva 15 días
+  // guardados, así que en "Todo" el eje se rotulaba "ago 26 · ago 26 · ago 26"
+  // —tres veces el mismo mes— porque el formato lo decidía el botón y no los
+  // datos. Se calcula antes de dibujar, que es quien lo usa.
+  let tramoDias = 0;
+  const tramoLargo = () => tramoDias > 300;
+
+  // En un tramo de cinco años, "18 oct" no dice de cuál.
+  function fmtPunto(iso) {
+    return tramoLargo() ? fmtLargo(iso) : fmtFecha(iso + "T12:00:00-04:00");
+  }
+
+  function fmtEje(iso) {
+    const d = new Date(iso + "T12:00:00-04:00");
+    if (isNaN(d)) return "";
+    return d.toLocaleDateString("es-VE", tramoLargo() ? { month: "short", year: "2-digit" } : { day: "numeric", month: "short" }).replace(/\./g, "");
+  }
+
+  let plotPts = [];   // [{x, y, iso, v}] en coordenadas del viewBox, para el crosshair
+
+  function dibujar(s) {
+    const pts = ralea(s, 320);
+    const vals = pts.map((p) => p[1]);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    // La serie del BCV va de 4,18 (2021) a ~845 (hoy): 200×. En escala lineal
+    // los tres primeros años son una raya pegada al suelo. Log a partir de 10×,
+    // y ROTULADO — una escala logarítmica sin avisar aplana una devaluación y
+    // hace ver suave lo que no lo fue.
+    const log = max / Math.max(min, 1e-9) > 10;
+    if (min === max) { min *= 0.999; max *= 1.001; }
+    const pad = (max - min) * 0.08;
+    let lo = log ? min : min - pad, hi = log ? max : max + pad;
+    const T = (v) => log ? Math.log10(v) : v;
+    const tlo = T(lo), thi = T(hi);
+    const iw = VB.w - VB.l - VB.r, ih = VB.h - VB.t - VB.b;
+    const X = (i) => VB.l + (pts.length === 1 ? iw / 2 : (i / (pts.length - 1)) * iw);
+    const Y = (v) => VB.t + ih - ((T(v) - tlo) / (thi - tlo || 1)) * ih;
+
+    plotPts = pts.map((p, i) => ({ x: X(i), y: Y(p[1]), iso: p[0], v: p[1] }));
+
+    let d = "", area = "";
+    plotPts.forEach((p, i) => { d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1); });
+    area = d + "L" + X(pts.length - 1).toFixed(1) + " " + (VB.t + ih) + "L" + VB.l + " " + (VB.t + ih) + "Z";
+
+    // el rótulo se dibuja ENCIMA de su línea, así que un corte pegado al suelo
+    // deja el texto medio fuera del plot. Se descartan los últimos 12px.
+    const suelo = VB.t + ih;
+    const yt = ticksY(lo, hi, log).filter((v) => v >= lo && v <= hi && suelo - Y(v) >= 12);
+    let grid = "";
+    for (const v of yt) {
+      const y = Y(v);
+      grid += '<line class="gridline" x1="' + VB.l + '" y1="' + y.toFixed(1) + '" x2="' + (VB.w - VB.r) + '" y2="' + y.toFixed(1) + '"/>' +
+        '<text class="axis-t" x="' + VB.l + '" y="' + (y - 4).toFixed(1) + '">' + fmtTick(v) + "</text>";
+    }
+
+    const idx = pts.length <= 2 ? [0, pts.length - 1] : [0, Math.floor((pts.length - 1) / 2), pts.length - 1];
+    let xt = "";
+    idx.forEach((i, n) => {
+      const anchor = n === 0 ? "start" : n === idx.length - 1 ? "end" : "middle";
+      xt += '<text class="axis-t" text-anchor="' + anchor + '" x="' + X(i).toFixed(1) + '" y="' + (VB.h - 6) + '">' + fmtEje(pts[i][0]) + "</text>";
+    });
+
+    const fin = plotPts[plotPts.length - 1];
+    return {
+      log,
+      svg: '<svg viewBox="0 0 ' + VB.w + " " + VB.h + '" role="img" aria-label="Serie de la tasa">' +
+        grid +
+        '<path class="serie-fill" d="' + area + '"/>' +
+        '<path class="serie" d="' + d + '"/>' +
+        '<circle class="dot-end" cx="' + fin.x.toFixed(1) + '" cy="' + fin.y.toFixed(1) + '" r="4"/>' +
+        '<line class="cross" id="cross" x1="0" y1="' + VB.t + '" x2="0" y2="' + (VB.t + ih) + '" style="display:none"/>' +
+        '<circle class="dot-hit" id="dotHit" r="4" style="display:none"/>' +
+        xt +
+        "</svg>",
+    };
+  }
+
+  // ---- la pantalla --------------------------------------------------------
+  const sheet = $("sheet"), shBody = $("shBody"), shTitle = $("shTitle"), shSub = $("shSub"), elRangos = $("ranges");
+
+  function pintarRangos() {
+    elRangos.innerHTML = "";
+    for (const r of RANGOS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = r.t;
+      b.setAttribute("aria-pressed", String(r.k === rango));
+      b.addEventListener("click", () => { if (rango === r.k) return; rango = r.k; pintarRangos(); renderHist(); });
+      elRangos.appendChild(b);
+    }
+  }
+
+  function statCard(k, v, m) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' +
+      (m ? '<div class="m">' + m + "</div>" : "") + "</div>";
+  }
+
+  function bloqueVisto() {
+    const prev = vistoPrev[cur];
+    const r = currentRate();
+    if (!prev || !isFinite(prev.v) || prev.v <= 0 || !isFinite(r) || r <= 0) return "";
+    const p = pct(r, prev.v);
+    const cuando = prev.iso ? fmtFecha(prev.iso + "T12:00:00-04:00") : "";
+    if (Math.abs(p) < 0.005) {
+      return '<div class="since"><div class="st"><b>Igual que la última vez que la viste.</b>' +
+        (cuando ? ' <span>Desde el ' + cuando + ".</span>" : "") + "</div></div>";
+    }
+    return '<div class="since"><div class="delta ' + claseDe(p) + '">' + flechaDe(p) + "</div>" +
+      '<div class="st"><b>' + (p > 0 ? "Subió" : "Bajó") + " " + fmtPct(p) + " desde que la viste.</b>" +
+      (cuando ? ' <span>La abriste el ' + cuando + ".</span>" : "") + "</div></div>";
+  }
+
+  function renderHist() {
+    const m = META[cur];
+    const t = tituloSerie();
+    shTitle.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    shSub.textContent = m.src;
+
+    if (histErr) { shBody.innerHTML = '<div class="empty">No se pudo cargar el histórico.<br>Revisa la conexión y vuelve a entrar.</div>'; return; }
+    if (!hist) { shBody.innerHTML = '<div class="empty">Cargando el histórico…</div>'; return; }
+
+    const full = serieDe(cur);
+    if (full.length < 2) {
+      shBody.innerHTML = '<div class="empty">Todavía no hay suficiente historial de ' + (cur === "USDT" ? "USDT" : m.label.toLowerCase()) + ".<br>Se guarda un valor por día.</div>";
+      return;
+    }
+    const s = recorta(full);
+    const vals = s.map((r) => r[1]);
+    const ini = s[0], fin = s[s.length - 1];
+    tramoDias = Math.round((new Date(fin[0] + "T12:00:00-04:00") - new Date(ini[0] + "T12:00:00-04:00")) / 86400000);
+    const g = dibujar(s);
+    const p = pct(fin[1], ini[1]);
+    const iMax = vals.indexOf(Math.max(...vals)), iMin = vals.indexOf(Math.min(...vals));
+
+    shBody.innerHTML =
+      '<div class="plot" id="plot">' + g.svg + '<div class="tip" id="tip" hidden></div></div>' +
+      (g.log ? '<div class="logtag">escala logarítmica · el tramo es demasiado ancho para una lineal</div>' : "") +
+      '<div class="stats">' +
+      statCard("En el tramo", '<span class="delta ' + claseDe(p) + '" style="font-size:19px">' + flechaDe(p) + "<span>" + signoDe(p) + fmtPct(p) + "</span></span>",
+        fmtEje(ini[0]) + " → " + fmtEje(fin[0])) +
+      statCard("Hoy", fmt.format(fin[1]) + " Bs", fmtPunto(fin[0])) +
+      statCard("Más alta", fmt.format(vals[iMax]) + " Bs", fmtPunto(s[iMax][0])) +
+      statCard("Más baja", fmt.format(vals[iMin]) + " Bs", fmtPunto(s[iMin][0])) +
+      "</div>" +
+      bloqueVisto() +
+      '<div class="sheet-foot">' + s.length + " días en este tramo, de " + full.length + " guardados desde " +
+      fmtLargo(full[0][0]) + ". Fuente: " + m.src + ". " +
+      '<a href="/historico.json">Los datos crudos</a>, por si los quieres para otra cosa.</div>';
+
+    montarCrosshair();
+  }
+
+  // El tooltip acompaña, nunca es la única vía: los cuatro números de arriba ya
+  // dan hoy, el máximo, el mínimo y la variación sin tocar nada.
+  function montarCrosshair() {
+    const plot = $("plot"), tip = $("tip");
+    if (!plot || !plotPts.length) return;
+    const svg = plot.querySelector("svg");
+    const cross = plot.querySelector("#cross"), dot = plot.querySelector("#dotHit");
+
+    const mover = (ev) => {
+      const box = svg.getBoundingClientRect();
+      if (!box.width) return;
+      const vx = ((ev.clientX - box.left) / box.width) * VB.w;
+      let best = 0, bd = Infinity;
+      for (let i = 0; i < plotPts.length; i++) {
+        const d = Math.abs(plotPts[i].x - vx);
+        if (d < bd) { bd = d; best = i; }
+      }
+      const p = plotPts[best];
+      cross.style.display = ""; dot.style.display = "";
+      cross.setAttribute("x1", p.x); cross.setAttribute("x2", p.x);
+      dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+      tip.hidden = false;
+      tip.innerHTML = '<div class="tv">' + fmt.format(p.v) + ' Bs</div><div class="td">' + fmtPunto(p.iso) + "</div>";
+      // el globo no se sale por los bordes: se topa contra el ancho del plot
+      const px = (p.x / VB.w) * box.width;
+      const half = tip.offsetWidth / 2;
+      tip.style.left = Math.max(half + 2, Math.min(box.width - half - 2, px)) + "px";
+      tip.style.top = Math.max(0, (p.y / VB.h) * box.height - tip.offsetHeight - 10) + "px";
+    };
+    const salir = () => { cross.style.display = "none"; dot.style.display = "none"; tip.hidden = true; };
+
+    plot.addEventListener("pointermove", mover);
+    plot.addEventListener("pointerdown", mover);
+    plot.addEventListener("pointerleave", salir);
+    plot.addEventListener("pointercancel", salir);
+  }
+
+  async function abrirHist() {
+    medir("historico_abierto", { moneda: cur, vista: "pantalla" });
+    sheet.hidden = false;
+    document.body.style.overflow = "hidden";
+    renderHist();
+    if (!hist && !histErr) { await cargarHist(); renderHist(); }
+  }
+
+  function cerrarHist() {
+    sheet.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  if (elHist) elHist.addEventListener("click", (e) => { e.preventDefault(); abrirHist(); });
+  $("shClose").addEventListener("click", cerrarHist);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) cerrarHist(); });
+  pintarRangos();
 
   PRESETS.forEach((v) => {
     const b = document.createElement("button");
@@ -717,6 +1202,7 @@
   els.tabs.forEach((b) => b.addEventListener("click", () => {
     if (cur === b.dataset.cur) return;
     cur = b.dataset.cur; store.cur = cur; save(); paintCurrency();
+    if (!sheet.hidden) renderHist();
   }));
   els.bs.addEventListener("beforeinput", decimalDot);
   els.fx.addEventListener("beforeinput", decimalDot);
@@ -730,6 +1216,12 @@
 
   cur = CURS.includes(store.cur) ? store.cur : "USD";
   applyCached(); paintCurrency(); fetchRates(false);
+
+  // El histórico va detrás de la tasa y nunca delante: son ~42 KB (~12 con
+  // gzip) que la calculadora no necesita para funcionar. Cuando llega, la
+  // variación aparece sola; si no llega, la app sigue igual y no se muestra
+  // ningún número inventado en su lugar.
+  cargarHist().then(() => { paintDelta(); if (!sheet.hidden) renderHist(); });
 })();
 </script>
 </body>
