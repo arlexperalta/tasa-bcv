@@ -204,8 +204,18 @@
   .credits { font-size: 12px; line-height: 1.7; color: var(--faint); }
   .credits .brand { color: var(--muted); }
   .credits .brand b { color: var(--text); font-weight: 600; }
-  .credits a { color: var(--accent); text-decoration: none; }
-  .credits a:active { color: var(--accent-dk); }
+  /* El acento puro mide 2,84:1 contra este fondo y el mínimo legible es 3:1, así
+     que como TEXTO no llegaba —medido, no estimado—. Sigue siendo el acento en
+     lo gráfico (el punto que late, la flecha, el punto de hoy en la serie);
+     para texto va un paso más claro del mismo rojo, que da 4,28:1. */
+  .credits a { color: #ff5c4d; text-decoration: none; }
+  .credits a:active { color: var(--accent); }
+  /* Y solo UNO de los dos enlaces es rojo. Con los dos, el acento dejaba de
+     señalar nada: dos renglones enteros encendidos compitiendo entre sí. Se
+     queda el que saca de la app; el histórico es una pantalla de aquí adentro
+     y se comporta como tal. */
+  .credits #historico { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+  .credits #historico:active { color: var(--text); }
   .btn {
     appearance: none; border: 1px solid var(--line); background: transparent;
     color: var(--text); font-family: var(--display); font-size: 14px; font-weight: 600;
