@@ -91,7 +91,7 @@
 
   /* tasa del día */
   .rate {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: baseline; justify-content: space-between;
     padding: 2px 4px 16px; gap: 12px;
   }
   .rate .l { display: flex; align-items: center; gap: 9px; font-size: 10.5px; color: var(--muted); }
@@ -144,12 +144,13 @@
   .delta.flat { color: var(--faint); }
   .delta .dref { color: var(--faint); }
   .rate .r input {
-    font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text);
+    font-family: var(--display); font-size: clamp(20px, 6.4vw, 25px); font-weight: 700;
+    color: var(--text); letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
     border: 0; background: transparent; width: 8ch; text-align: right;
     padding: 2px 0; outline: none; pointer-events: none;
   }
-  .rate .r .u { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .rate .r .u { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 
   #rateLabel.ahead { color: var(--text); }
 
@@ -282,7 +283,8 @@
     text-transform: uppercase; color: var(--inv-muted);
   }
   .past .pv {
-    display: block; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; margin-top: 1px;
+    display: block; font-size: clamp(12.5px, 3.85vw, 15.5px); font-weight: 700;
+    letter-spacing: -.01em; margin-top: 1px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .pnav {
@@ -296,6 +298,15 @@
     appearance: none; border: 0; background: var(--inv-text); color: var(--inv-bg);
     height: 44px; padding: 0 15px; border-radius: 11px; font: inherit;
     font-size: 13.5px; font-weight: 700; cursor: pointer; flex: none;
+  }
+  /* En pantallas estrechas se aprietan los CONTROLES, no el texto: "sábado, 15
+     de agosto" es lo que vuelve imposible confundir esta barra con la de hoy, y
+     truncarlo a "sábado, 15 d…" mata justo eso. 40px sigue muy por encima del
+     mínimo táctil de WCAG 2.2 (24×24). */
+  @media (max-width: 365px) {
+    .past { gap: 6px; }
+    .pnav { width: 40px; min-width: 40px; height: 40px; }
+    .phoy { height: 40px; padding: 0 11px; }
   }
   /* El aviso del día sin publicación NO va en rojo: el rojo aquí se leería como
      error y no hay ninguno. Que el BCV no publique un sábado es normal, y saber
