@@ -253,6 +253,111 @@
   .acts { display: flex; align-items: center; gap: 8px; }
   .made { font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 9.5px; color: var(--faint); text-align: center; margin-top: 20px; }
 
+  /* ---- elegir el día ------------------------------------------------------
+     La etiqueta que declara QUÉ tasa estás viendo es el control para cambiarla:
+     tocas lo que lo dice. La fila de hoy no gana ningún control nuevo — el
+     95% de las visitas es "cuánto es esto ahora" y no tiene por qué pagar
+     el peaje de una función que usa una minoría. */
+  .lblbtn {
+    appearance: none; background: transparent; border: 0; padding: 5px 6px 5px 2px;
+    margin: -5px 0 -5px -2px; border-radius: 9px; cursor: pointer; color: inherit;
+    font: inherit; display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; white-space: nowrap;
+  }
+  .lblbtn:hover { background: var(--field); }
+  .lblbtn .chevd { width: 13px; height: 13px; opacity: .8; flex: none; }
+
+  /* Barra de modo pasado. Va en la superficie invertida —el mecanismo que esta
+     app ya usa para lo que debe saltar del fondo— porque el riesgo real de toda
+     la función es que alguien calcule con una tasa vieja creyendo que es la de
+     hoy. "Hoy" vive aquí y nunca a dos toques. */
+  .past {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 13px;
+    background: var(--inv-bg); color: var(--inv-text); border-radius: 13px; padding: 8px;
+  }
+  .past[hidden] { display: none; }
+  .past .ptxt { flex: 1; min-width: 0; padding-left: 3px; }
+  .past .pk {
+    display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--inv-muted);
+  }
+  .past .pv {
+    display: block; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pnav {
+    appearance: none; border: 0; background: var(--inv-bg-dn); color: var(--inv-text);
+    width: 44px; height: 44px; min-width: 44px; border-radius: 11px; padding: 0;
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .pnav:disabled { opacity: .35; cursor: default; }
+  .pnav svg { width: 17px; height: 17px; }
+  .phoy {
+    appearance: none; border: 0; background: var(--inv-text); color: var(--inv-bg);
+    height: 44px; padding: 0 15px; border-radius: 11px; font: inherit;
+    font-size: 13.5px; font-weight: 700; cursor: pointer; flex: none;
+  }
+  /* El aviso del día sin publicación NO va en rojo: el rojo aquí se leería como
+     error y no hay ninguno. Que el BCV no publique un sábado es normal, y saber
+     cuál rige es justamente la respuesta que la persona vino a buscar. */
+  .avisod {
+    background: var(--track); border: 1px solid var(--line); border-radius: 11px;
+    padding: 10px 12px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.5; color: var(--muted);
+  }
+  .avisod[hidden] { display: none; }
+  .avisod b { color: var(--text); font-weight: 600; }
+
+  /* Hoja baja, no pantalla completa como la del histórico: aquí se elige un día
+     y se sale, no se lee una gráfica. */
+  .dscrim {
+    position: fixed; inset: 0; z-index: 25; background: rgba(20,22,25,.55);
+    opacity: 0; transition: opacity .18s;
+  }
+  .dscrim[hidden] { display: none; }
+  .dscrim.on { opacity: 1; }
+  .dsheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 26;
+    max-width: 480px; margin: 0 auto; background: #33373d;
+    border-radius: 20px 20px 0 0; padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(101%); transition: transform .24s cubic-bezier(.32,.72,0,1);
+  }
+  .dsheet[hidden] { display: none; }
+  .dsheet.on { transform: none; }
+  .grab { width: 38px; height: 4px; background: var(--line); border-radius: 3px; margin: 0 auto 14px; }
+  .dsheet h2 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  .dsheet .dsub { font-size: 12.5px; color: var(--muted); margin: 3px 0 15px; line-height: 1.5; }
+  .week { display: flex; gap: 6px; margin-bottom: 9px; }
+  .dchip {
+    flex: 1; min-width: 0; appearance: none; background: var(--track); color: var(--text);
+    border: 1.5px solid transparent; border-radius: 11px; padding: 8px 0 7px;
+    font: inherit; text-align: center; cursor: pointer; min-height: 56px;
+  }
+  .dchip .dw {
+    display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .dchip .dn { display: block; font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .dchip[aria-pressed="true"] { background: var(--inv-bg); border-color: var(--inv-bg); }
+  .dchip[aria-pressed="true"] .dw { color: var(--inv-muted); }
+  .dchip[aria-pressed="true"] .dn { color: var(--inv-text); }
+  .dchip.nod { background: transparent; border: 1.5px dashed var(--line); }
+  .dchip.nod .dn { color: var(--faint); }
+  .dchip:disabled { opacity: .3; cursor: default; }
+  .leyd {
+    font-family: var(--mono); font-size: 9.5px; color: var(--faint);
+    letter-spacing: .02em; line-height: 1.6; margin-bottom: 13px;
+  }
+  .leyd[hidden] { display: none; }
+  /* El calendario es el nativo del teléfono a propósito: ya es accesible, ya
+     está en su idioma, pesa cero y la persona lo conoce. */
+  .otrad {
+    position: relative; display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; min-height: 44px; border-top: 1px solid var(--line); padding-top: 12px;
+    color: var(--muted); font-size: 14px; cursor: pointer;
+  }
+  .otrad svg { width: 17px; height: 17px; flex: none; }
+  .otrad input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
   /* ---- pantalla del historial ---------------------------------------------
      Va en la misma página y no en otra URL: la app es un solo archivo sin build
      ni router, y partirla en dos sería estrenar infraestructura para una vista.
@@ -359,8 +464,24 @@
     <button role="tab" data-cur="USDT" aria-selected="false">USDT</button>
   </div>
 
+  <div class="past" id="past" hidden>
+    <button type="button" class="pnav" id="dPrev" aria-label="Día anterior">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ptxt"><span class="pk">Estás viendo</span><span class="pv" id="pastTxt"></span></span>
+    <button type="button" class="pnav" id="dNext" aria-label="Día siguiente">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button type="button" class="phoy" id="dHoy">Hoy</button>
+  </div>
+
+  <p class="avisod" id="avisoDia" hidden></p>
+
   <div class="rate">
-    <span class="l"><span class="dot" id="live"></span> <span id="rateLabel">Tasa del día · BCV</span></span>
+    <span class="l"><button type="button" class="lblbtn" id="openDia" aria-haspopup="dialog" aria-expanded="false">
+      <span class="dot" id="live"></span> <span id="rateLabel">Tasa del día · BCV</span>
+      <svg class="chevd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button></span>
     <span class="r" id="rateWrap">
       <span class="rv">
         <input id="rate" readonly tabindex="-1" aria-label="Tasa en bolívares" />
@@ -434,6 +555,20 @@
   <!-- El enlace del pie conserva su href al JSON crudo a propósito: si el
        histórico no carga o el JS se cae, sigue llevando al dato en vez de a
        nada. El JS lo intercepta cuando puede abrir esta pantalla. -->
+  <div class="dscrim" id="dScrim" hidden></div>
+  <section class="dsheet" id="dSheet" hidden role="dialog" aria-modal="true" aria-label="Elegir el día de la tasa">
+    <div class="grab"></div>
+    <h2>¿De qué día?</h2>
+    <p class="dsub">Para saber cuánto costó algo cuando lo compraste, con la tasa que regía ese día.</p>
+    <div class="week" id="week" role="group" aria-label="Días recientes"></div>
+    <p class="leyd" id="leyd" hidden></p>
+    <label class="otrad">
+      <span id="otraTxt">Otra fecha</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+      <input type="date" id="dPick" aria-label="Elegir otra fecha">
+    </label>
+  </section>
+
   <section class="sheet" id="sheet" hidden aria-label="Historial de la tasa">
     <div class="sheet-head">
       <div>
@@ -488,6 +623,12 @@
   let pubs = {};       // publicaciones por fecha-valor: { "2026-07-22": { USD, EUR, hora } }
   let fresh = {};      // monedas actualizadas con éxito en esta sesión
   let showNext = false;
+  // Día pasado que se está mirando (ISO), o null cuando la app está en vivo.
+  // NO se guarda en localStorage a propósito: al reabrir siempre es hoy. Un
+  // estado en el que la pantalla muestra una tasa que no es la vigente no se
+  // hereda de una sesión a otra — así es como alguien calcularía mal con toda
+  // confianza.
+  let verIso = null;
   let last = "bs";
 
   const store = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
@@ -549,6 +690,7 @@
   // qué publicación se muestra: la próxima si el usuario la pidió; si no la
   // vigente; si no hay vigente conocida (primer uso un fin de semana), la próxima
   function displayIso() {
+    if (verIso) { const t = tasaDeIso(verIso); return t ? t.iso : null; }
     if (cur === "USDT") return null;
     const v = vigenteIso(), n = proximaIso();
     if (showNext && hasPub(n)) return n;
@@ -558,10 +700,27 @@
   }
 
   function currentRate() {
+    if (verIso) { const t = tasaDeIso(verIso); return t ? t.v : NaN; }
     if (cur === "USDT") return official.USDT ? official.USDT.valor : NaN;
     const iso = displayIso();
     if (iso) return pubs[iso][cur];
     return official[cur] ? official[cur].valor : NaN;
+  }
+
+  // La tasa de hoy sin abandonar el modo pasado. Se usa para la variación
+  // "hasta hoy", que es la segunda pregunta que se hace todo el que mira un día
+  // viejo: cuánto se movió desde entonces.
+  // La publicación viva, sin salir del modo pasado. El header dice cuándo se
+  // actualizó la APP y eso no cambia porque se esté mirando un día viejo;
+  // displayIso() en modo pasado apunta al histórico, que no está en `pubs`.
+  function isoVivo() {
+    const guardado = verIso; verIso = null;
+    try { return displayIso(); } finally { verIso = guardado; }
+  }
+
+  function tasaViva() {
+    const guardado = verIso; verIso = null;
+    try { return currentRate(); } finally { verIso = guardado; }
   }
 
   function addPub(iso, vals) {
@@ -583,7 +742,7 @@
       const o = official.USDT;
       if (o) fechaTxt = [o.fecha, o.hora].filter(Boolean).join(" · ");
     } else {
-      const iso = displayIso();
+      const iso = isoVivo();
       if (iso) {
         fechaTxt = [fmtFecha(iso + "T12:00:00-04:00"), pubs[iso].hora].filter(Boolean).join(" · ");
         if (iso > hoyIso()) { label = "Tasa del " + fmtDia(iso) + " · BCV"; ahead = true; }
@@ -591,15 +750,21 @@
         fechaTxt = [official[cur].fecha, official[cur].hora].filter(Boolean).join(" · ");
       }
     }
+    if (verIso) {
+      const t = tasaDeIso(verIso);
+      label = t ? fmtFecha(t.iso + "T12:00:00-04:00") + " · " + (cur === "USDT" ? "P2P" : "BCV") : "sin dato ese día";
+      ahead = false;
+    }
     els.rateLabel.textContent = label;
     els.rateLabel.classList.toggle("ahead", ahead);
     if (isFinite(r)) {
       els.fecha.textContent = fechaTxt || "guardada";
-      els.live.classList.toggle("on", !!fresh[cur]);
+      els.live.classList.toggle("on", !verIso && !!fresh[cur]);
     }
     else { els.fecha.textContent = "sin datos · actualiza"; els.live.classList.remove("on"); }
     paintNextBtn();
     paintDelta();
+    paintDia();
     recordarVisto();
   }
 
@@ -613,6 +778,9 @@
     // la tasa futura no cuenta como "vista": es la de mañana, y compararse
     // contra ella mañana daría cero cuando en realidad sí se movió
     if (cur !== "USDT" && showNext) return;
+    // mirar un día viejo tampoco cuenta: la próxima visita compararía contra
+    // una tasa de hace semanas y diría que "subió" lo que en realidad ya estaba
+    if (verIso) return;
     if (!store.visto || typeof store.visto !== "object") store.visto = {};
     store.visto[cur] = { v: r, iso: (cur === "USDT" ? hoyIso() : (displayIso() || hoyIso())) };
     save();
@@ -621,7 +789,7 @@
   // el botón solo existe cuando hay tasa de hoy Y una futura que ofrecer
   function paintNextBtn() {
     const n = proximaIso(), v = vigenteIso();
-    const show = cur !== "USDT" && hasPub(n) && hasPub(v);
+    const show = !verIso && cur !== "USDT" && hasPub(n) && hasPub(v);
     els.nextBtn.hidden = !show;
     if (!show) { showNext = false; return; }
     els.nextBtn.setAttribute("aria-pressed", String(showNext));
@@ -647,18 +815,23 @@
       if (isFinite(bs)) {
         els.fx.value = fmt.format(bs / r);
         els.bsSub.textContent = bs ? fmt.format(bs) + " Bs" : "";
-        els.fxSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym;
+        els.fxSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym + sufFecha();
       } else { els.fx.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
     } else {
       const fx = parse(els.fx.value);
       if (isFinite(fx)) {
         els.bs.value = fmt.format(fx * r);
         els.fxSub.textContent = fx ? META[cur].sym + " " + fmt.format(fx) : "";
-        els.bsSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym;
+        els.bsSub.textContent = "a " + fmt.format(r) + " Bs por " + META[cur].sym + sufFecha();
       } else { els.bs.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
     }
     updateClears();
   }
+
+  // Un monto convertido con una tasa vieja tiene que decir de cuándo es, en el
+  // mismo renglón donde dice cuánto: si no, la cifra viaja sola y no hay forma
+  // de saber si sigue vigente.
+  function sufFecha() { return verIso ? " · " + fmtFecha(verIso + "T12:00:00-04:00") : ""; }
 
   function updateClears() {
     const empty = !els.bs.value && !els.fx.value;
@@ -804,11 +977,19 @@
   function fuenteTxt() {
     const r = fmt.format(currentRate()) + " Bs por " + (cur === "USDT" ? "USDT" : META[cur].sym);
     if (cur === "USDT") {
-      const o = official.USDT;
-      return "Binance P2P" + (o && o.fecha ? " · " + o.fecha : "") + " · " + r;
+      if (verIso) return "Binance P2P · " + fmtDia(verIso) + " · " + r;
+      return "Binance P2P" + fuenteTxtUSDT() + " · " + r;
     }
     const iso = displayIso();
     return "Tasa BCV" + (iso ? " del " + fmtDia(iso) : "") + " · " + r;
+  }
+
+  // El cálculo de un día viejo que viaja a WhatsApp sin su fecha es un número
+  // que el que lo recibe no puede fechar: parece el de hoy. Por eso el mensaje
+  // dice de cuándo es antes que cuánto es.
+  function fuenteTxtUSDT() {
+    const o = official.USDT;
+    return (o && o.fecha ? " · " + o.fecha : "");
   }
 
   function sharePayload() {
@@ -1016,6 +1197,21 @@
 
   function paintDelta() {
     const r = currentRate();
+    // En modo pasado no se compara contra el día anterior a ese día —eso no le
+    // sirve a nadie— sino contra hoy: "cuánto se movió desde entonces" es la
+    // segunda pregunta de todo el que mira una fecha vieja.
+    if (verIso) {
+      const viva = tasaViva();
+      if (!isFinite(r) || r <= 0 || !isFinite(viva) || viva <= 0) { els.delta.hidden = true; return; }
+      const ph = pct(viva, r);
+      els.delta.hidden = false;
+      els.delta.className = "delta " + claseDe(ph);
+      els.delta.innerHTML = sparkline(serieDe(cur)) + flechaDe(ph) + "<span>" + signoDe(ph) + fmtPct(ph) +
+        '</span><span class="dref">hasta hoy</span>' + CHEV;
+      els.delta.setAttribute("aria-label",
+        "Ver el historial. Desde ese día la tasa " + (ph > 0 ? "subió " : ph < 0 ? "bajó " : "no se movió, ") + fmtPct(ph) + " hasta hoy");
+      return;
+    }
     const a = anterior();
     if (!isFinite(r) || r <= 0 || !a) { els.delta.hidden = true; return; }
     const p = pct(r, a.v);
@@ -1025,6 +1221,155 @@
       '</span><span class="dref">vs ' + fmtFecha(a.iso + "T12:00:00-04:00") + "</span>" + CHEV;
     els.delta.setAttribute("aria-label",
       "Ver el historial. " + (p > 0 ? "Subió " : p < 0 ? "Bajó " : "Sin cambio, ") + fmtPct(p) + " contra la tasa del " + fmtDia(a.iso));
+  }
+
+  // ---- elegir el día ------------------------------------------------------
+  // Idea de Carlos (20-ago-2026), con su caso de uso textual: "cuánto me costó
+  // realmente algo hace 3 días". Eso NO es un archivo de contador: es pasado
+  // reciente, y por eso la puerta son siete días en una tira y no un calendario.
+  // Nadie piensa "17 de agosto", piensa "el lunes".
+
+  // La tasa que REGÍA un día. El BCV solo publica días hábiles, así que un
+  // sábado no tiene fila propia — y sin embargo sí tiene tasa vigente, la del
+  // último día hábil, que es la que se usa para facturar ese día. Devolver
+  // "sin dato" ahí sería falso, y el fin de semana es justo cuando se compra:
+  // de los 1.782 días del rango, 609 no tienen fila y 508 son fin de semana.
+  //
+  // USDT es otra cosa y por eso no retrocede: Binance opera todos los días, así
+  // que un día que falta es un día que no se anotó, no un día sin mercado.
+  function tasaDeIso(iso) {
+    const s = serieDe(cur);
+    if (!s.length || !iso) return null;
+    if (cur === "USDT") {
+      for (let i = s.length - 1; i >= 0; i--) if (s[i][0] === iso) return { v: s[i][1], iso };
+      return null;
+    }
+    for (let i = s.length - 1; i >= 0; i--) if (s[i][0] <= iso) return { v: s[i][1], iso: s[i][0] };
+    return null;
+  }
+
+  const minIso = () => { const s = serieDe(cur); return s.length ? s[0][0] : null; };
+  const diaCorto = (iso) => {
+    try {
+      const d = new Date(iso + "T12:00:00-04:00");
+      return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { weekday: "short" }).replace(/[.,]/g, "");
+    } catch { return ""; }
+  };
+  const diaLargo = (iso) => {
+    try {
+      const d = new Date(iso + "T12:00:00-04:00");
+      return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "long" });
+    } catch { return ""; }
+  };
+  const corre = (iso, n) => {
+    const d = new Date(iso + "T12:00:00-04:00");
+    d.setDate(d.getDate() + n);
+    return d.toLocaleDateString("en-CA");
+  };
+
+  // `via` dice por dónde entró (tira de días, calendario nativo o flecha) y
+  // `dias_atras` cuánto retrocedió. Ese segundo número es el que valida o
+  // tumba la premisa del diseño: se construyó para "hace 3 días" y la tira de
+  // siete es la puerta principal, así que si la gente se va a meses atrás la
+  // puerta está en el sitio equivocado. Se mide desde el primer día porque la
+  // pieza que no se instrumenta al nacer se queda ciega semanas.
+  function irA(iso, via) {
+    const hoy = hoyIso();
+    showNext = false;
+    // Un día fuera de la serie NO se corrige al más cercano: eso respondería
+    // una pregunta distinta a la que se hizo y sin avisar. Se muestra el día
+    // pedido y el aviso dice que ahí no hay dato.
+    verIso = (!iso || iso >= hoy) ? null : iso;
+    if (verIso && via) {
+      const atras = Math.round((new Date(hoy + "T12:00:00-04:00") - new Date(verIso + "T12:00:00-04:00")) / 86400000);
+      medir("dia_elegido", { via, dias_atras: atras, moneda: cur });
+    }
+    paintRate(); recompute();
+  }
+
+  function paintDia() {
+    const p = $("past");
+    p.hidden = !verIso;
+    $("openDia").setAttribute("aria-expanded", String(!$("dSheet").hidden));
+    const av = $("avisoDia");
+    if (!verIso) { av.hidden = true; return; }
+
+    $("pastTxt").textContent = diaLargo(verIso);
+    const min = minIso();
+    $("dPrev").disabled = !min || verIso <= min;
+    $("dNext").disabled = verIso >= hoyIso();
+
+    const t = tasaDeIso(verIso);
+    if (!t && cur === "USDT") {
+      av.hidden = false;
+      av.innerHTML = "De USDT solo hay serie propia desde el <b>" + fmtDia(min || "") +
+        "</b>. Antes de esa fecha no existe el dato — y no se rellena con otra cosa.";
+    } else if (t && t.iso !== verIso) {
+      av.hidden = false;
+      av.innerHTML = "El BCV no publicó ese día. <b>Rige la tasa del " + fmtDia(t.iso) +
+        "</b>, que es la que se usa para facturar.";
+    } else if (!t) {
+      av.hidden = false;
+      av.textContent = "No hay dato guardado para ese día.";
+    } else av.hidden = true;
+  }
+
+  function pintarSemana() {
+    const w = $("week");
+    w.innerHTML = "";
+    const hoy = hoyIso(), min = minIso();
+    let hayHueco = false;
+    // El tiempo corre de izquierda a derecha —el más viejo primero, hoy pegado
+    // al borde derecho— igual que la gráfica del histórico y que las flechas
+    // ‹ ›. Antes iba al revés y se retrocedía hacia la derecha con la flecha
+    // izquierda: dos controles de la misma función apuntando en contra.
+    for (let i = 6; i >= 0; i--) {
+      const f = corre(hoy, -i);
+      const t = tasaDeIso(f);
+      const propio = !!(t && t.iso === f);
+      if (!propio && t) hayHueco = true;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "dchip" + (propio ? "" : " nod");
+      b.setAttribute("aria-pressed", String(f === (verIso || hoy)));
+      b.disabled = !!(min && f < min);
+      b.innerHTML = '<span class="dw">' + (i === 0 ? "Hoy" : i === 1 ? "Ayer" : diaCorto(f)) + "</span>" +
+        '<span class="dn">' + Number(f.slice(8)) + "</span>";
+      b.setAttribute("aria-label", diaLargo(f));
+      b.addEventListener("click", () => { irA(f, "tira"); cerrarDia(); });
+      w.appendChild(b);
+    }
+    const ley = $("leyd");
+    ley.hidden = !hayHueco;
+    if (hayHueco) ley.innerHTML = "╌ EL BCV NO PUBLICA FIN DE SEMANA NI FERIADOS.<br>ESOS DÍAS RIGE LA TASA DEL DÍA HÁBIL ANTERIOR — SE PUEDEN ELEGIR.";
+    const pick = $("dPick"), min2 = minIso();
+    if (min2) pick.min = min2;
+    pick.max = hoyIso();
+    pick.value = verIso || hoyIso();
+    $("otraTxt").textContent = min2 ? "Otra fecha — desde " + fmtMesAno(min2) : "Otra fecha";
+  }
+
+  const fmtMesAno = (iso) => {
+    try {
+      const d = new Date(iso + "T12:00:00-04:00");
+      return isNaN(d) ? "" : d.toLocaleDateString("es-VE", { month: "short", year: "numeric" }).replace(".", "");
+    } catch { return ""; }
+  };
+
+  async function abrirDia() {
+    if (!hist && !histErr) await cargarHist();
+    pintarSemana();
+    $("dScrim").hidden = false;
+    $("dSheet").hidden = false;
+    requestAnimationFrame(() => { $("dScrim").classList.add("on"); $("dSheet").classList.add("on"); });
+    $("openDia").setAttribute("aria-expanded", "true");
+  }
+
+  function cerrarDia() {
+    const sc = $("dScrim"), sh = $("dSheet");
+    sc.classList.remove("on"); sh.classList.remove("on");
+    $("openDia").setAttribute("aria-expanded", "false");
+    setTimeout(() => { sc.hidden = true; sh.hidden = true; }, 240);
   }
 
   // ---- la gráfica ---------------------------------------------------------
@@ -1300,6 +1645,14 @@
     sheet.hidden = true;
     document.body.style.overflow = "";
   }
+
+  $("openDia").addEventListener("click", abrirDia);
+  $("dScrim").addEventListener("click", cerrarDia);
+  $("dHoy").addEventListener("click", () => irA(null));
+  $("dPrev").addEventListener("click", () => irA(corre(verIso || hoyIso(), -1), "flecha"));
+  $("dNext").addEventListener("click", () => { const n = corre(verIso || hoyIso(), 1); irA(n >= hoyIso() ? null : n, "flecha"); });
+  $("dPick").addEventListener("change", (e) => { if (e.target.value) { irA(e.target.value, "calendario"); cerrarDia(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("dSheet").hidden) cerrarDia(); });
 
   if (elHist) elHist.addEventListener("click", (e) => { e.preventDefault(); abrirHist("pie"); });
   els.delta.addEventListener("click", () => abrirHist("variacion"));
