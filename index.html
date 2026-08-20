@@ -790,6 +790,12 @@
   // dice el texto); si no, va la app sola. El link viaja siempre: es el reparto.
   const SITE = location.protocol.startsWith("http") ? location.origin : "https://tasa.arlexperalta.com";
 
+  // El link que sale en el mensaje lleva marca de reenvío: es lo único que
+  // permite contar al que LLEGA por un link pegado. Ver contarLlegada().
+  // No se propaga en cadena a propósito: `origin` no lleva query, así que quien
+  // reciba y comparta a su vez vuelve a mandar el link limpio.
+  const SHARE_URL = SITE + "/?ref=c";
+
   // el mensaje sale al mundo: los dos montos con el mismo formato, aunque en
   // pantalla el chip haya dejado un "20" pelado
   const num = (v) => { const n = parse(v); return isFinite(n) ? fmt.format(n) : v; };
@@ -851,7 +857,7 @@
     if (navigator.share) {
       // cancelar la hoja nativa lanza AbortError: es un "no quiero", no un fallo
       try {
-        await navigator.share({ ...p, url: SITE });
+        await navigator.share({ ...p, url: SHARE_URL });
         medir("compartir_nativo_ok", { con_calculo });
         return;
       } catch (e) {
@@ -865,12 +871,50 @@
       }
     }
     try {
-      await navigator.clipboard.writeText(p.text + "\n\n" + SITE);
+      await navigator.clipboard.writeText(p.text + "\n\n" + SHARE_URL);
       medir("compartir_copiado", { con_calculo });
       shareFeedback("Copiado");
     } catch {
       medir("compartir_fallo", { con_calculo });
       shareFeedback("No se pudo");
+    }
+  }
+
+  // ---- llegada por reenvío -------------------------------------------------
+  // Cierra la otra mitad de la medición del compartir. Sin esto se sabe cuánta
+  // gente APRIETA el botón, pero no si alguien llega por eso: un link pegado en
+  // WhatsApp o Telegram se abre sin referrer, así que esa visita es
+  // indistinguible de la de quien escribió el dominio a mano —las dos caen en
+  // "Directo"—. La marca del link es lo único que las separa.
+  //
+  // DOS LÍMITES, escritos aquí para que nadie los lea de más después:
+  // 1. La serie EMPIEZA EL 20-AGO-2026 y no es comparable con nada anterior:
+  //    las visitas de antes no tenían cómo marcarse. Un salto ese día es la
+  //    marca nueva, no más reenvíos.
+  // 2. Cuenta SOLO EL PRIMER SALTO: es un PISO, nunca un total. Quien llega por
+  //    un reenvío y comparte a su vez manda el link limpio (el mensaje sale con
+  //    `origin`, sin query), y esa segunda generación no se ve.
+  function contarLlegada() {
+    let ref = null;
+    try { ref = new URLSearchParams(location.search).get("ref"); } catch (e) { return; }
+    if (!ref) return;
+
+    // La barra se limpia ya, salga o no la medición: el usuario no tiene por
+    // qué cargar con el parámetro ni volver a propagarlo si copia la URL.
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete("ref");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch (e) { /* sin replaceState la app sigue igual */ }
+
+    // Umami carga con `defer`, así que en este punto todavía no existe y un
+    // medir() directo se perdería SIEMPRE. DOMContentLoaded sí corre después de
+    // los defer: es el primer momento donde medir() tiene a quién hablarle.
+    const emitir = () => medir("llegada_compartida", { ref });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", emitir, { once: true });
+    } else {
+      emitir();
     }
   }
 
@@ -1289,6 +1333,7 @@
   els.share.addEventListener("click", doShare);
   els.nextBtn.addEventListener("click", () => { showNext = !showNext; paintRate(); recompute(); });
 
+  contarLlegada();
   cur = CURS.includes(store.cur) ? store.cur : "USD";
   applyCached(); paintCurrency(); fetchRates(false);
 

@@ -27,6 +27,8 @@ Es una sola página estática, sin backend ni base de datos. Las tasas se piden 
 
 **Lo que se comparte dice de qué día es la tasa** (2026-07-25): el texto no dice "tasa de hoy" sino "Tasa BCV del vie 25 jul". Si el usuario está viendo la tasa del día siguiente, eso es lo que sale en el mensaje. Un cálculo compartido viaja fuera de la app y sobrevive al día en que se hizo; sin la fecha, el que lo recibe no puede saber si sigue vigente.
 
+**El link compartido lleva marca, y la marca no se propaga** (2026-08-20): el mensaje sale con `?ref=c`, y al abrirlo la app emite `llegada_compartida` y borra el parámetro de la barra. Es la única forma de contar al que LLEGA: un link pegado en WhatsApp o Telegram se abre sin referrer, así que esa visita era indistinguible de la de quien escribió el dominio a mano. Dos límites que van escritos también en el código: la serie **empieza el 20-ago-2026** y no se compara con nada anterior, y cuenta **solo el primer salto** —quien llega por un reenvío y comparte a su vez manda el link limpio, porque el mensaje sale con `origin`, sin query—, así que el número es un piso y nunca un total.
+
 **Cuando no hay tasa, no hay número.** Si una fuente no carga, la calculadora borra el monto convertido y avisa (`sin datos · actualiza`) en vez de dejar el resultado calculado con la tasa de otra moneda. Antes no lo hacía: al cambiar a USDT con la fuente caída, la pantalla mostraba un monto de dólar rotulado USDT. Un número equivocado con la etiqueta correcta es peor que ningún número.
 
 La última tasa y la moneda elegida se guardan en `localStorage`, así que si se cae la conexión la calculadora sigue sirviendo con el último valor. Todo el código —HTML, CSS y JavaScript— vive en `index.html`, sin dependencias ni build.
