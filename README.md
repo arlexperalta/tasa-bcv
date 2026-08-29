@@ -93,6 +93,16 @@ Desde el 29-ago-2026 la app hace **una pregunta, una sola vez por dispositivo**:
 2. **Al menos 50 respuestas.** Con menos, el 10% son cinco personas y eso no distingue señal de ruido; a 200 son veinte y sí. Por debajo no cierra *ni abre*: la lectura es "no alcanzó para saber".
 3. **Tasa de respuesta del 5% o más.** Si responde casi nadie de quien la ve, lo que falla es la pieza —no se ve bien o estorba—, no la hipótesis, y lo que se revisa es la pieza. Esta condición solo existe gracias al conteo de impresiones.
 
+**El borde se acata, no se prorroga.** Con 50 respuestas o más y una tasa de respuesta sana, un 9% no es "no alcanzó para saber": es que **no pasa**. Va escrito en el script porque es por donde se colaría la primera lectura floja.
+
+**Y si no hay veredicto, hay diagnóstico, no prórroga a ciegas.** Las impresiones dicen de qué murió: menos de 400, el problema es el filtro o el tráfico y no sabemos nada de la gente todavía; 400 o más con tasa bajo el 5%, el problema es la pieza. Se nombra la causa, se corrige **esa** y solo esa —si fue el filtro, se afloja lo mínimo, de "segunda o tercera visita" a "segunda"; si fue la pieza, se cambia **una** cosa, no tres— y se corre **una sola prórroga, hasta el 10-oct-2026**. Nunca se toca "una vez por dispositivo", ni el no-modal, ni la quietud: esas tres protegen la app y valen más que esta prueba.
+
+**La segunda prórroga no existe**, y no solo por método: mientras esto corre, el cruce comercial sigue cediendo el puesto. Seis semanas ya es caro; nueve no se paga.
+
+**El silencio también es un resultado.** Si el 10-oct, tras seis semanas y dos configuraciones sobre ~3.000 sesiones al mes, no se juntaron 50 respuestas, eso deja de ser un no-resultado y pasa a ser *el* resultado: esta población es **tráfico, no público**. Gente que abre una calculadora, resuelve su cuenta y se va. Si no contestan una pregunta de un toque dentro de algo que ya usan y les gusta, no van a comprar nada tampoco. Cierra "monetizar la audiencia de tasa" con evidencia en vez de opinión, y ahorra los meses que costaría descubrirlo construyendo.
+
+Que el 19-sep caiga en "sin veredicto" es **lo esperable**, no un fracaso: con "una vez por dispositivo" y "nunca en la primera visita", el universo real de impresiones es mucho menor que las 3.000 sesiones. Por eso la prórroga está escrita desde ahora y no se improvisa ese día.
+
 Cinco reglas que están en el código y no son de conveniencia:
 
 - **Aparece después del cálculo, nunca al abrir, y nunca tapando nada.** No es modal y no hay que cerrarla para seguir usando la app. Como la calculadora es bidireccional y en vivo, "hizo su cálculo" no existe como momento: lo que se detecta es la **quietud** —monto válido en los dos campos y tres segundos sin tocar nada—, que es la firma de "ya leyó el número".

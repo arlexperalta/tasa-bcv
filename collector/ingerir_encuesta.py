@@ -61,6 +61,15 @@ MIN_RESPUESTAS = 200
 MIN_VEREDICTO = 50
 TASA_MIN = 0.05
 CORTE = date(2026, 9, 19)
+# UNA sola prórroga, con causa nombrada, y escrita desde ahora para que no se
+# improvise ese día. La segunda no existe: si alguien la quiere, es una prueba
+# nueva con otra hipótesis, no esta corriendo más tiempo. Razón material además
+# de la metodológica — mientras esto corre, el cruce comercial sigue cediendo el
+# puesto, y son 56 llegadas medidas, la mayor fuente de tráfico del sitio. Seis
+# semanas ya es caro; nueve no se paga.
+CORTE_2 = date(2026, 10, 10)
+# Piso de impresiones para poder culpar a la pieza en vez de al filtro.
+MIN_IMPRESIONES = 400
 
 EVENTOS = {"v": "vista", "r": "respuesta", "x": "cerrada"}
 ETIQUETAS = {
@@ -289,40 +298,100 @@ def resumen():
     # una prueba en una excusa.
     print()
     hoy = date.today()
+    tasa = (resp / vistas) if vistas else 0.0
 
-    # 1. No se lee antes de tiempo. Leer a medio camino y ajustar el umbral
-    #    después es lo que convierte una prueba en una excusa.
+    # No se lee antes de tiempo. Leer a medio camino y ajustar el umbral después
+    # es lo que convierte una prueba en una excusa.
     if resp < MIN_RESPUESTAS and hoy < CORTE:
         print("SIN VEREDICTO todavía: faltan %d respuestas o llegar al %s."
               % (MIN_RESPUESTAS - resp, CORTE.isoformat()))
         return
 
-    # 2. n mínimo. Sin esto, el umbral mide ruido con cara de dato.
-    if resp < MIN_VEREDICTO:
-        print("SIN VEREDICTO. n = %d, y por debajo de %d el %.0f%% son %d personas:"
-              % (resp, MIN_VEREDICTO, UMBRAL * 100, round(resp * UMBRAL)))
-        print("eso no distingue señal de ruido. No cierra NI abre — 'no alcanzó para")
-        print("saber'. Mira las vistas: si son pocas, el problema es que no la vieron.")
+    # EL BORDE SE ACATA, NO SE PRORROGA. Con 50 respuestas o más y una tasa de
+    # respuesta sana, un 9% NO es "no alcanzó para saber": es que NO PASA. Va
+    # escrito aquí porque es por donde se colaría la primera lectura floja.
+    if resp >= MIN_VEREDICTO and tasa >= TASA_MIN:
+        if pct >= UMBRAL * 100:
+            print("PASA. %.1f%% de las respuestas cobra o lleva números en dos monedas." % pct)
+            print("Hay a quién construirle.")
+        else:
+            print("NO PASA. %.1f%% de las respuestas contra un umbral de %.0f%%, con n = %d"
+                  % (pct, UMBRAL * 100, resp))
+            print("y tasa de respuesta del %.1f%%. La puerta se cierra." % (tasa * 100))
         return
 
-    # 3. Si casi nadie responde, lo que falla es la pieza y no la hipótesis. Esta
-    #    condición existe gracias al conteo de impresiones: sin denominador no
-    #    habría forma de distinguir un mal resultado de una pieza mal puesta.
-    tasa = (resp / vistas) if vistas else 0.0
-    if tasa < TASA_MIN:
-        print("SIN VEREDICTO SOBRE EL NEGOCIO. Responde el %.1f%% de quien la ve, por"
-              % (tasa * 100))
-        print("debajo del %.0f%% mínimo. Eso no dice nada de la gente: dice que la pieza"
-              % (TASA_MIN * 100))
-        print("no se está viendo bien o que estorba. Lo que se revisa es la pieza.")
-        return
+    # ---- sin veredicto: toca DIAGNÓSTICO, no prórroga a ciegas --------------
+    # Las impresiones desambiguan la causa, que es exactamente para lo que
+    # sirven. Sin ellas, todo lo de abajo sería una sola casilla de "salió mal".
+    print("SIN VEREDICTO. n = %d, impresiones = %d, tasa de respuesta = %.1f%%."
+          % (resp, vistas, tasa * 100))
+    print()
 
-    if pct >= UMBRAL * 100:
-        print("PASA. %.1f%% de las respuestas cobra o lleva números en dos monedas." % pct)
-        print("Hay a quién construirle.")
+    if vistas < MIN_IMPRESIONES:
+        causa = "FILTRO"
+        print("CAUSA: EL FILTRO O EL TRÁFICO. Con %d impresiones (mínimo %d) la pieza"
+              % (vistas, MIN_IMPRESIONES))
+        print("no se está mostrando lo suficiente. De la gente no sabemos nada todavía.")
+        print("Corrección permitida, y solo esta: aflojar el filtro LO MÍNIMO, de")
+        print("'segunda o tercera visita' a 'segunda visita'. NO se toca 'una vez por")
+        print("dispositivo', NO se toca el no-modal, NO se toca la quietud: esas tres")
+        print("protegen la app y valen más que esta prueba.")
+    elif tasa < TASA_MIN:
+        causa = "PIEZA"
+        print("CAUSA: LA PIEZA. Se está viendo (%d impresiones) y no se contesta: %.1f%%"
+              % (vistas, tasa * 100))
+        print("contra un %.0f%% mínimo. Eso no dice nada de la gente." % (TASA_MIN * 100))
+        print("Corrección permitida: UNA sola cosa — el sitio, el texto de la pregunta")
+        print("o el momento. Una, no tres, o no vamos a saber cuál era.")
     else:
-        print("NO PASA. %.1f%% de las respuestas contra un umbral de %.0f%%." % (pct, UMBRAL * 100))
-        print("La puerta se cierra.")
+        # NO lleva una comprobación de "error de conteo" aquí, y no es un olvido:
+        # es imposible de disparar. Llegar a esta rama exige tasa >= 5%, o sea
+        # resp >= 0,05 x impresiones; que además resp < 50 obliga a que las
+        # impresiones sean menos de 1.000. O sea que impresiones suficientes +
+        # tasa sana + n < 50 NO es una contradicción — es lo normal en la franja
+        # de 400 a 1.000 impresiones, y ahí lo que falta es volumen y nada más.
+        # (El piso de 400 sirve para separar filtro de pieza, no para garantizar
+        # 50 respuestas: al 5% mínimo, 400 impresiones dan 20.)
+        causa = "VOLUMEN"
+        print("CAUSA: VOLUMEN. Impresiones suficientes y tasa de respuesta sana, pero")
+        print("todavía no hay %d respuestas. Con %d impresiones al %.1f%% eso no es una"
+              % (MIN_VEREDICTO, vistas, tasa * 100))
+        print("contradicción: hacen falta ~%d impresiones para que %d respuestas salgan"
+              % (int(MIN_VEREDICTO / TASA_MIN), MIN_VEREDICTO))
+        print("del mínimo del %.0f%%. Falta alcance, no hay nada roto." % (TASA_MIN * 100))
+
+    print()
+    if hoy < CORTE_2:
+        print("PRÓRROGA: una sola, hasta el %s. Se corrige LA CAUSA NOMBRADA (%s)"
+              % (CORTE_2.isoformat(), causa))
+        print("y se corre de nuevo. No es 'dejarlo correr un poco más'.")
+        return
+
+    # ---- el silencio pasa a ser el resultado --------------------------------
+    if resp < MIN_VEREDICTO:
+        print("SE ACABÓ, Y ESTO YA ES UN RESULTADO.")
+        print()
+        print("Seis semanas, dos configuraciones, ~3.000 sesiones al mes, y no se")
+        print("juntaron %d respuestas. A partir de aquí 'no alcanzó para saber' DEJA DE" % MIN_VEREDICTO)
+        print("SER un no-resultado y pasa a ser EL resultado, y dice esto:")
+        print()
+        print("  Esta población es TRÁFICO, NO PÚBLICO. Gente que abre una calculadora,")
+        print("  resuelve su cuenta y se va, que no interactúa con nada que no sea el")
+        print("  número. Si no contestan una pregunta de un toque dentro de algo que ya")
+        print("  usan y les gusta, no van a comprar nada tampoco.")
+        print()
+        print("Con eso se cierra 'monetizar la audiencia de tasa' con evidencia y no con")
+        print("opinión, que es lo que se vino a buscar. No es el resultado que queríamos,")
+        print("pero es un resultado, y ahorra los meses que costaría descubrirlo")
+        print("construyendo.")
+        print()
+        print("LA SEGUNDA PRÓRROGA NO EXISTE. Si alguien la quiere, tiene que ser una")
+        print("prueba nueva con otra hipótesis, no esta misma corriendo más tiempo.")
+        return
+
+    print("Pasado el %s sin veredicto y con n = %d. La segunda prórroga NO existe:"
+          % (CORTE_2.isoformat(), resp))
+    print("lo que siga es una prueba nueva con otra hipótesis.")
 
 
 def main():
