@@ -99,7 +99,14 @@ Desde el 29-ago-2026 la app hace **una pregunta, una sola vez por dispositivo**:
 
 **La segunda prórroga no existe**, y no solo por método: mientras esto corre, el cruce comercial sigue cediendo el puesto. Seis semanas ya es caro; nueve no se paga.
 
-**El silencio también es un resultado.** Si el 10-oct, tras seis semanas y dos configuraciones sobre ~3.000 sesiones al mes, no se juntaron 50 respuestas, eso deja de ser un no-resultado y pasa a ser *el* resultado: esta población es **tráfico, no público**. Gente que abre una calculadora, resuelve su cuenta y se va. Si no contestan una pregunta de un toque dentro de algo que ya usan y les gusta, no van a comprar nada tampoco. Cierra "monetizar la audiencia de tasa" con evidencia en vez de opinión, y ahorra los meses que costaría descubrirlo construyendo.
+**El silencio también es un resultado, pero solo si se midió.** El 10-oct hay dos ramas y la frontera es si se le preguntó a suficiente gente:
+
+- **1.000 impresiones o más y menos de 50 respuestas** → vale el veredicto duro: esta población es **tráfico, no público**. Gente que abre una calculadora, resuelve su cuenta y se va. Si no contestan una pregunta de un toque dentro de algo que ya usan y les gusta, no van a comprar nada tampoco. Cierra "monetizar la audiencia de tasa" con evidencia en vez de opinión, y ahorra los meses que costaría descubrirlo construyendo.
+- **Menos de 1.000 impresiones** → **no se emite veredicto sobre la población**, porque no se midió: decir "tráfico, no público" con 300 impresiones sería dictar sentencia sobre las personas a partir de un fallo del instrumento. Pero tampoco se prorroga.
+
+Y esa segunda rama no se va vacía. **Las impresiones son la primera cuenta que existe de la base recurrente de tasa:** la pieza solo se le muestra a quien ya había vuelto, así que el total en seis semanas mide algo que nadie midió nunca — las ~3.000 sesiones al mes jamás se separaron en "gente que vuelve" y "gente de paso". Es un **piso y no un total**, contado en **dispositivos y no en personas**: no aparece quien volvió sin llegar a completar un cálculo, ni quien borró los datos del navegador, y quien usa tasa en el teléfono y en la computadora cuenta dos veces. El script no le pone umbral automático a ese número a propósito — inventar una vara de audiencia sin con qué fundamentarla sería el mismo error que la rama viene a corregir.
+
+El 1.000 se **deriva** de los otros dos umbrales (50 respuestas al 5% mínimo), no se escribe a mano. Escribirlo suelto fue justo el error que se coló antes: un 400 haciendo de dos umbrales distintos.
 
 Que el 19-sep caiga en "sin veredicto" es **lo esperable**, no un fracaso: con "una vez por dispositivo" y "nunca en la primera visita", el universo real de impresiones es mucho menor que las 3.000 sesiones. Por eso la prórroga está escrita desde ahora y no se improvisa ese día.
 

@@ -70,6 +70,11 @@ CORTE = date(2026, 9, 19)
 CORTE_2 = date(2026, 10, 10)
 # Piso de impresiones para poder culpar a la pieza en vez de al filtro.
 MIN_IMPRESIONES = 400
+# Impresiones necesarias para que la falta de respuestas diga algo SOBRE LA
+# GENTE. Se DERIVA, no se escribe a mano: al 5% mínimo hacen falta 1.000
+# impresiones para que salgan 50 respuestas. Escribirlo suelto fue justo el
+# error que se coló antes — un 400 sirviendo de dos umbrales distintos.
+MIN_IMPRESIONES_POBLACION = int(MIN_VEREDICTO / TASA_MIN)
 
 EVENTOS = {"v": "vista", "r": "respuesta", "x": "cerrada"}
 ETIQUETAS = {
@@ -367,12 +372,46 @@ def resumen():
         print("y se corre de nuevo. No es 'dejarlo correr un poco más'.")
         return
 
-    # ---- el silencio pasa a ser el resultado --------------------------------
+    # ---- el silencio pasa a ser el resultado, pero solo si se midió ---------
+    # DOS RAMAS, y la frontera es si se le preguntó a suficiente gente. Sin esto,
+    # 300 impresiones y 20 respuestas cerrarían la puerta con una sentencia sobre
+    # las personas sacada de un fallo del instrumento — que es exactamente lo que
+    # todas estas reglas existen para impedir.
+    if resp < MIN_VEREDICTO and vistas < MIN_IMPRESIONES_POBLACION:
+        print("SIN VEREDICTO SOBRE LA POBLACIÓN, y no se prorroga.")
+        print()
+        print("Con %d impresiones (hacen falta ~%d) no se le preguntó a suficiente"
+              % (vistas, MIN_IMPRESIONES_POBLACION))
+        print("gente como para concluir nada sobre ella. Decir 'tráfico, no público'")
+        print("con este dato sería dictar sentencia sobre las personas a partir de un")
+        print("fallo del instrumento.")
+        print()
+        print("PERO ESTA RAMA NO SE VA VACÍA. La pieza solo se le muestra a quien YA")
+        print("HABÍA VUELTO, así que el total de impresiones es la primera cuenta que")
+        print("existe de la base recurrente de tasa: las ~3.000 sesiones al mes nunca")
+        print("se separaron en 'gente que vuelve' y 'gente de paso'.")
+        print()
+        print("    BASE RECURRENTE, SEIS SEMANAS: %d dispositivos" % vistas)
+        print()
+        print("Y ES UN PISO, NO UN TOTAL, contado en DISPOSITIVOS y no en personas.")
+        print("No aparece quien volvió y no llegó a completar un cálculo, ni quien")
+        print("borró los datos del navegador, y quien usa tasa en el teléfono y en la")
+        print("computadora cuenta dos veces. El número real de personas es otro, y")
+        print("cuánto mayor no se sabe. Se lee como piso o no se lee.")
+        print()
+        print("Sin umbral automático a propósito: ese número lo leen Molde y Arlex.")
+        print("Inventar aquí una vara de audiencia sin con qué fundamentarla sería el")
+        print("mismo error que esta rama viene a corregir.")
+        return
+
     if resp < MIN_VEREDICTO:
         print("SE ACABÓ, Y ESTO YA ES UN RESULTADO.")
         print()
-        print("Seis semanas, dos configuraciones, ~3.000 sesiones al mes, y no se")
-        print("juntaron %d respuestas. A partir de aquí 'no alcanzó para saber' DEJA DE" % MIN_VEREDICTO)
+        print("Seis semanas, dos configuraciones, y la pregunta se le mostró a %d" % vistas)
+        print("dispositivos que YA HABÍAN VUELTO, dentro de algo que usan y les gusta")
+        print("(dispositivos y no personas: quien tiene dos aparatos cuenta dos veces,")
+        print("así que de personas hay estas o menos, nunca más).")
+        print("No se juntaron %d respuestas. Aquí 'no alcanzó para saber' DEJA DE" % MIN_VEREDICTO)
         print("SER un no-resultado y pasa a ser EL resultado, y dice esto:")
         print()
         print("  Esta población es TRÁFICO, NO PÚBLICO. Gente que abre una calculadora,")
