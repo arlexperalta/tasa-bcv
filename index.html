@@ -1209,6 +1209,31 @@
   // primero. No se lee antes ni se ajusta el umbral después.
   const ENC_MS = 3000;    // quietud que define "ya leyó el número"
   const ENC_MAX = 240;
+  // EL REMATE DEL CORREO CADUCA SOLO, y esa es la parte importante: no depende
+  // de que nadie se acuerde. Si al 10-oct-2026 la app de Android no está en
+  // prueba cerrada, el campo del correo deja de aparecer por su cuenta y la
+  // encuesta sigue corriendo sin él.
+  //
+  // POR QUÉ TIENE FECHA. La frase "estoy montando la app para Android" es hoy
+  // verdad, y es lo único que se podía prometer sin mentir. Pero esa condición
+  // no es permanente: caduca sola si la app no aparece. Seguir recogiendo
+  // correos contra una app que no llega convierte el remate en captura, que es
+  // justo lo que esta pieza tiene prohibido ser — la primera sensación que la
+  // marca debe dar es "aquí no te van a sacar nada", y eso se pierde entero con
+  // una sola excepción.
+  //
+  // FALLA HACIA EL LADO SEGURO A PROPÓSITO: si la app SÍ existe para entonces,
+  // extender la fecha es cambiar este número y volver a desplegar, una decisión
+  // deliberada. Al revés —que siga pidiendo correos porque nadie lo apagó— es
+  // exactamente la deuda que esto viene a evitar.
+  //
+  // Y LA OTRA MITAD DE LA REGLA NO ESTÁ AQUÍ, PORQUE NO ES CÓDIGO: a quien ya
+  // dejó su correo se le escribe igual, exista la app o no. Si está, para
+  // invitarlo a la prueba cerrada; si no está, para decirle que todavía no y
+  // por qué. Una vez y corto. Esa gente entregó su dirección dentro de algo
+  // gratis a cambio de una promesa concreta, y contar lo que pasó —incluido que
+  // no pasó— es lo que hace que la frase siga siendo verdad después de escrita.
+  const FIN_REMATE = Date.parse("2026-10-10T23:59:59-04:00");
   const ENC_TXT = {
     1: "Para saber cuánto me cuesta algo",
     2: "Para cambiar efectivo",
@@ -1350,7 +1375,10 @@
     medir("encuesta_respuesta", { op: op, pos: pos });
     $("encOps").hidden = true;
     $("encX").hidden = true;
-    if (op === 3 || op === 4) return encPaso2("mail");
+    // La respuesta ya se mandó arriba, así que si el remate caducó no se pierde
+    // nada de la prueba: lo único que deja de pasar es pedirle el correo a
+    // alguien a quien ya no se le puede prometer nada.
+    if ((op === 3 || op === 4) && Date.now() < FIN_REMATE) return encPaso2("mail");
     if (op === 5) return encPaso2("txt");
     encGracias();
   }
