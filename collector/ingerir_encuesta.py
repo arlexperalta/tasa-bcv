@@ -38,8 +38,28 @@ ESQUEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "esquema.sql"
 # respuestas o el 19-sep-2026, lo que llegue primero. No se lee antes ni se
 # ajusta el umbral después — por eso el script se niega a dar veredicto todavía
 # en vez de dejarlo a la fuerza de voluntad de quien lo corre.
+#
+# EL DENOMINADOR SON LAS RESPUESTAS, NUNCA LAS IMPRESIONES. Va en mayúsculas
+# porque desde que se cuenta la impresión hay dos denominadores posibles en esta
+# misma base, y calcular el 10% sobre impresiones cerraría la puerta por error
+# casi seguro. Las impresiones sirven para OTRA COSA: distinguir "no la vieron"
+# de "la vieron y no les interesó". Son diagnóstico de la pieza, no medida del
+# interés, y no entran en el veredicto.
+#
+#   VEREDICTO = (opción 3 + opción 4) / total de respuestas >= 10%
+#
+# Tres condiciones para que haya veredicto, y las tres solo pueden RETENERLO,
+# nunca darlo por bueno de más:
+#   1. 200 respuestas, o el 19-sep-2026.
+#   2. Al menos 50 respuestas. Con menos, el 10% son cinco personas y eso no
+#      distingue señal de ruido. A 200 son 20 y sí.
+#   3. Tasa de respuesta (respuestas/impresiones) del 5% o más. Por debajo, lo
+#      que falla es la pieza —no se ve bien o estorba—, no la hipótesis, y lo
+#      que se revisa es la pieza.
 UMBRAL = 0.10
 MIN_RESPUESTAS = 200
+MIN_VEREDICTO = 50
+TASA_MIN = 0.05
 CORTE = date(2026, 9, 19)
 
 EVENTOS = {"v": "vista", "r": "respuesta", "x": "cerrada"}
@@ -239,9 +259,12 @@ def resumen():
         c = conteo.get(op, 0)
         print("  %d. %-40s %4d  %5.1f%%" % (op, ETIQUETAS[op], c, 100.0 * c / resp))
 
+    # Sobre RESPUESTAS. Las impresiones no entran aquí; ver la nota del umbral.
     negocio = conteo.get(3, 0) + conteo.get(4, 0)
     pct = 100.0 * negocio / resp
-    print("\n  3+4 (la prueba): %d de %d = %.1f%%   [umbral: %.0f%%]" % (negocio, resp, pct, UMBRAL * 100))
+    print("\n  3+4 (la prueba): %d de %d respuestas = %.1f%%   [umbral: %.0f%% de las"
+          % (negocio, resp, pct, UMBRAL * 100))
+    print("  respuestas, NO de las impresiones]")
 
     # Sesgo de posición: si una posición se lleva sistemáticamente más votos, el
     # barajado no bastó y el reparto por opción hay que leerlo con eso encima.
@@ -266,20 +289,40 @@ def resumen():
     # una prueba en una excusa.
     print()
     hoy = date.today()
+
+    # 1. No se lee antes de tiempo. Leer a medio camino y ajustar el umbral
+    #    después es lo que convierte una prueba en una excusa.
     if resp < MIN_RESPUESTAS and hoy < CORTE:
         print("SIN VEREDICTO todavía: faltan %d respuestas o llegar al %s."
               % (MIN_RESPUESTAS - resp, CORTE.isoformat()))
         return
-    if resp < 50:
-        print("n = %d. Con menos de 50 respuestas el %.0f%% son %d personas: eso no"
-              % (resp, UMBRAL * 100, round(resp * UMBRAL)))
-        print("distingue señal de ruido. La lectura honesta es 'no alcanzó para saber',")
-        print("no 'la puerta se cierra'. Mira las vistas: si son pocas, no la vieron.")
+
+    # 2. n mínimo. Sin esto, el umbral mide ruido con cara de dato.
+    if resp < MIN_VEREDICTO:
+        print("SIN VEREDICTO. n = %d, y por debajo de %d el %.0f%% son %d personas:"
+              % (resp, MIN_VEREDICTO, UMBRAL * 100, round(resp * UMBRAL)))
+        print("eso no distingue señal de ruido. No cierra NI abre — 'no alcanzó para")
+        print("saber'. Mira las vistas: si son pocas, el problema es que no la vieron.")
         return
+
+    # 3. Si casi nadie responde, lo que falla es la pieza y no la hipótesis. Esta
+    #    condición existe gracias al conteo de impresiones: sin denominador no
+    #    habría forma de distinguir un mal resultado de una pieza mal puesta.
+    tasa = (resp / vistas) if vistas else 0.0
+    if tasa < TASA_MIN:
+        print("SIN VEREDICTO SOBRE EL NEGOCIO. Responde el %.1f%% de quien la ve, por"
+              % (tasa * 100))
+        print("debajo del %.0f%% mínimo. Eso no dice nada de la gente: dice que la pieza"
+              % (TASA_MIN * 100))
+        print("no se está viendo bien o que estorba. Lo que se revisa es la pieza.")
+        return
+
     if pct >= UMBRAL * 100:
-        print("PASA. %.1f%% cobra o lleva números en dos monedas. Hay a quién construirle." % pct)
+        print("PASA. %.1f%% de las respuestas cobra o lleva números en dos monedas." % pct)
+        print("Hay a quién construirle.")
     else:
-        print("NO PASA. %.1f%% contra un umbral de %.0f%%. La puerta se cierra." % (pct, UMBRAL * 100))
+        print("NO PASA. %.1f%% de las respuestas contra un umbral de %.0f%%." % (pct, UMBRAL * 100))
+        print("La puerta se cierra.")
 
 
 def main():

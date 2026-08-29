@@ -83,14 +83,22 @@ El colector además pide `identity` explícito y descomprime si igual le llega g
 
 Desde el 29-ago-2026 la app hace **una pregunta, una sola vez por dispositivo**: *"¿Para qué usaste la tasa ahorita?"*, con cinco opciones en orden aleatorio. Existe porque tasa lleva un año con miles de visitas al mes y a esa gente no se le ha preguntado nunca para qué usa esto. Se sabe "precios en tienda" y "cambiar efectivo" porque alguien lo dijo suelto; de ahí en adelante era suposición.
 
-**El umbral está escrito antes de mirar los números, y eso es lo único que hace honesta la prueba:** si las opciones 3 y 4 —cobrarle a un cliente, cuadrar cuentas— no llegan juntas al **10% de las respuestas**, no hay un negocio ahí y la puerta se cierra. Se lee a las **200 respuestas o el 19-sep-2026**, lo que llegue primero. `ingerir_encuesta.py --resumen` se niega a dar veredicto antes de eso: leer a medio camino y ajustar el umbral después es lo que convierte una prueba en una excusa.
+**El umbral está escrito antes de mirar los números, y eso es lo único que hace honesta la prueba:** si las opciones 3 y 4 —cobrarle a un cliente, cuadrar cuentas— no llegan juntas al **10% de las respuestas**, no hay un negocio ahí y la puerta se cierra.
+
+**El denominador son las respuestas, nunca las impresiones.** Desde que se cuenta la impresión hay dos denominadores posibles en la misma base, y calcular ese 10% sobre impresiones cerraría la puerta por error casi seguro. Las impresiones sirven para otra cosa —distinguir *"no la vieron"* de *"la vieron y no les interesó"*—: son diagnóstico de la pieza, no medida del interés, y no entran en el veredicto.
+
+`ingerir_encuesta.py --resumen` exige **tres condiciones** para dar veredicto, y las tres solo pueden retenerlo, nunca darlo por bueno de más:
+
+1. **200 respuestas, o el 19-sep-2026.** Leer a medio camino y ajustar el umbral después es lo que convierte una prueba en una excusa.
+2. **Al menos 50 respuestas.** Con menos, el 10% son cinco personas y eso no distingue señal de ruido; a 200 son veinte y sí. Por debajo no cierra *ni abre*: la lectura es "no alcanzó para saber".
+3. **Tasa de respuesta del 5% o más.** Si responde casi nadie de quien la ve, lo que falla es la pieza —no se ve bien o estorba—, no la hipótesis, y lo que se revisa es la pieza. Esta condición solo existe gracias al conteo de impresiones.
 
 Cinco reglas que están en el código y no son de conveniencia:
 
 - **Aparece después del cálculo, nunca al abrir, y nunca tapando nada.** No es modal y no hay que cerrarla para seguir usando la app. Como la calculadora es bidireccional y en vivo, "hizo su cálculo" no existe como momento: lo que se detecta es la **quietud** —monto válido en los dos campos y tres segundos sin tocar nada—, que es la firma de "ya leyó el número".
 - **Una vez por dispositivo.** Si la ignoran o la cierran, no vuelve nunca.
 - **Nunca en la primera visita.** Quien ya tiene tasas guardadas en `localStorage` cuenta como recurrente desde el primer día: la huella de haber estado aquí ya existía en el teléfono de la gente, y empezar un contador desde cero habría dejado la muestra dos semanas atrás contra un reloj de tres.
-- **Le cede el puesto al cruce comercial en vez de sumarse a él**, y no se lo devuelve en esa sesión. Dos cajas seguidas pidiendo algo es exactamente lo que esta app no es, y si el cruce reapareciera justo después de que alguien respondió se leería como cambalache. Vuelve en la visita siguiente, donde nadie nota que hubo un intercambio.
+- **Le cede el puesto al cruce comercial en vez de sumarse a él**, y no se lo devuelve en esa sesión. Dos cajas seguidas pidiendo algo es exactamente lo que esta app no es, y si el cruce reapareciera justo después de que alguien respondió se leería como cambalache. Vuelve en la visita siguiente, donde nadie nota que hubo un intercambio. **Es un costo aceptado, no gratis:** ese cruce es la mayor fuente de tráfico de arlexperalta.com (56 llegadas medidas) y la única puerta comercial de tasa que funciona. Si durante la prueba el tráfico al sitio cae, el precio es este y hay que atribuirlo aquí y no a otra cosa.
 - **El correo va en su propia tabla, sin vínculo con la respuesta.** No se pierde nada: solo ve ese campo quien marcó la 3 o la 4, así que la lista ya nace filtrada. Guardar el vínculo no aportaría y convertiría una respuesta anónima en una identificada.
 
 **Se cuenta la impresión, no solo la respuesta**, y va a la misma base. Es el denominador: sin él, un resultado flojo no se puede leer, porque *"la vieron y no les interesó"* y *"no la vieron"* darían el mismo número y solo el primero cierra la puerta. El observador de visibilidad no dispara con la pestaña en segundo plano, así que responder o cerrar marcan la vista también — quien responde, vio.
