@@ -79,6 +79,37 @@ El colector además pide `identity` explícito y descomprime si igual le llega g
 
 `backfill_bcv.py` necesita `xlrd`, que Contabo no tiene: corre en la torre y la base viaja por `scp`.
 
+## La pregunta
+
+Desde el 29-ago-2026 la app hace **una pregunta, una sola vez por dispositivo**: *"¿Para qué usaste la tasa ahorita?"*, con cinco opciones en orden aleatorio. Existe porque tasa lleva un año con miles de visitas al mes y a esa gente no se le ha preguntado nunca para qué usa esto. Se sabe "precios en tienda" y "cambiar efectivo" porque alguien lo dijo suelto; de ahí en adelante era suposición.
+
+**El umbral está escrito antes de mirar los números, y eso es lo único que hace honesta la prueba:** si las opciones 3 y 4 —cobrarle a un cliente, cuadrar cuentas— no llegan juntas al **10% de las respuestas**, no hay un negocio ahí y la puerta se cierra. Se lee a las **200 respuestas o el 19-sep-2026**, lo que llegue primero. `ingerir_encuesta.py --resumen` se niega a dar veredicto antes de eso: leer a medio camino y ajustar el umbral después es lo que convierte una prueba en una excusa.
+
+Cinco reglas que están en el código y no son de conveniencia:
+
+- **Aparece después del cálculo, nunca al abrir, y nunca tapando nada.** No es modal y no hay que cerrarla para seguir usando la app. Como la calculadora es bidireccional y en vivo, "hizo su cálculo" no existe como momento: lo que se detecta es la **quietud** —monto válido en los dos campos y tres segundos sin tocar nada—, que es la firma de "ya leyó el número".
+- **Una vez por dispositivo.** Si la ignoran o la cierran, no vuelve nunca.
+- **Nunca en la primera visita.** Quien ya tiene tasas guardadas en `localStorage` cuenta como recurrente desde el primer día: la huella de haber estado aquí ya existía en el teléfono de la gente, y empezar un contador desde cero habría dejado la muestra dos semanas atrás contra un reloj de tres.
+- **Le cede el puesto al cruce comercial en vez de sumarse a él**, y no se lo devuelve en esa sesión. Dos cajas seguidas pidiendo algo es exactamente lo que esta app no es, y si el cruce reapareciera justo después de que alguien respondió se leería como cambalache. Vuelve en la visita siguiente, donde nadie nota que hubo un intercambio.
+- **El correo va en su propia tabla, sin vínculo con la respuesta.** No se pierde nada: solo ve ese campo quien marcó la 3 o la 4, así que la lista ya nace filtrada. Guardar el vínculo no aportaría y convertiría una respuesta anónima en una identificada.
+
+**Se cuenta la impresión, no solo la respuesta**, y va a la misma base. Es el denominador: sin él, un resultado flojo no se puede leer, porque *"la vieron y no les interesó"* y *"no la vieron"* darían el mismo número y solo el primero cierra la puerta. El observador de visibilidad no dispara con la pestaña en segundo plano, así que responder o cerrar marcan la vista también — quien responde, vio.
+
+**Y se guarda en qué posición salió la opción marcada**, más el barajado completo de esa sesión. El orden es aleatorio para que la primera opción no se lleve votos por estar primera; anotar la posición es lo que permite **verificar** después que no hubo sesgo, en vez de suponerlo.
+
+### Dónde aterriza, y por qué no hay un servicio nuevo
+
+En tasa no había nada escuchando: nginx sirve estático y proxea, y el colector es un cron que **sale** a buscar. Levantar un servicio para recoger 200 respuestas sería meterle al único proyecto que funciona una pieza más que vigilar y que se puede caer.
+
+Así que `/api/encuesta` **no procesa nada**: anota la línea en su propio log y contesta `204`. No tiene forma de fallar porque no ejecuta código. `collector/ingerir_encuesta.py` la trae a SQLite en la corrida horaria, llevando offset e inode para no perder ni repetir líneas, drenando el rotado antes de saltar al archivo nuevo y descartando la última línea si nginx la está escribiendo todavía — la misma clase de error que el cuerpo partido del `/api/usdt` de agosto: leer algo mientras alguien lo escribe.
+
+Lo que cuesta: el dato pasa por un archivo. **`/var/log/tasa` tiene que existir antes de arrancar el contenedor** (`mkdir -p` en el host y bind mount). Si nginx no puede abrir su log no arranca, y eso no es la encuesta caída, es el sitio caído.
+
+```bash
+ingerir_encuesta.py              # cron horario, al lado de recolectar.py
+ingerir_encuesta.py --resumen    # lee el resultado
+```
+
 ## Correr localmente
 
 No hay nada que instalar. Abre `index.html` en el navegador, o levanta un servidor estático:

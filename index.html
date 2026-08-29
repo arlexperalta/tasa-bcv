@@ -215,6 +215,56 @@
   .cruce-txt span { font-size: 12px; color: var(--muted); line-height: 1.35; }
   .cruce svg { width: 18px; height: 18px; color: var(--accent); flex: none; margin-left: auto; }
 
+  /* ---- la pregunta --------------------------------------------------------
+     Ocupa el MISMO sitio que el cruce y no se suma a él: mientras está, el
+     cruce no está. Dos cajas seguidas pidiéndole algo a la persona es
+     exactamente lo que esta app no es, y el momento en que aparece —-justo
+     después de que hizo su cálculo-— es el peor posible para que huela a
+     captura. Por eso también hereda el lenguaje del cruce (misma superficie,
+     mismo borde, mismo radio) en vez de traer una caja de formulario: se lee
+     como una nota del que hizo la app, no como algo que vino de fuera. */
+  .enc { margin-top: 18px; padding: 15px 15px 14px; border-radius: 14px;
+         background: var(--field); border: 1px solid var(--line); }
+  .enc-h { display: flex; align-items: flex-start; gap: 10px; }
+  .enc-q { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+  .enc-x {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    color: var(--faint); padding: 2px; margin: -2px -2px 0 auto; flex: none;
+  }
+  .enc-x svg { width: 15px; height: 15px; display: block; }
+  .enc-x:active { color: var(--text); }
+  .enc-ops { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .enc-ops button {
+    appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left;
+    font-family: var(--display); font-size: 13.5px; line-height: 1.3; color: var(--text);
+    background: var(--track); padding: 11px 13px; border-radius: 10px;
+    transition: background .15s;
+  }
+  .enc-ops button:active { background: var(--pill); }
+  /* El paso 2 (correo o texto libre) reemplaza a las opciones en el mismo
+     hueco. La respuesta que importa YA se mandó al tocar la opción: esto es
+     un añadido, y abandonarlo aquí no pierde nada. */
+  .enc-p2 { margin-top: 12px; }
+  .enc-p2 p { font-size: 13px; line-height: 1.4; color: var(--text); }
+  .enc-row { display: flex; gap: 7px; margin-top: 10px; }
+  .enc-row input {
+    flex: 1; min-width: 0; appearance: none;
+    font-family: var(--display); font-size: 15px; color: var(--text);
+    background: var(--track); border: 1px solid transparent; border-radius: 10px;
+    padding: 11px 12px; outline: none;
+  }
+  .enc-row input:focus { border-color: var(--pill); }
+  .enc-row button {
+    appearance: none; border: 0; cursor: pointer; flex: none;
+    font-family: var(--display); font-size: 14px; font-weight: 600;
+    color: var(--inv-text); background: var(--inv-bg);
+    padding: 11px 15px; border-radius: 10px;
+  }
+  .enc-row button:active { background: var(--inv-bg-dn); }
+  .enc-nota { font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+              color: var(--faint); margin-top: 9px; line-height: 1.5; }
+  .enc-ok { font-size: 13.5px; line-height: 1.4; color: var(--muted); }
+
   footer { margin-top: auto; padding-top: 22px; }
   /* Créditos y botones van apilados, no lado a lado. Lo estuvieron mientras los
      créditos eran dos líneas; con la tercera (el histórico, 15-ago-2026) dejó de
@@ -524,6 +574,32 @@
   </div>
 
   <button class="next" id="nextBtn" aria-pressed="false" hidden></button>
+
+  <!-- La pregunta (29-ago-2026). Ocupa el puesto del cruce de abajo mientras
+       está viva, y se lo devuelve en cuanto se responde o se cierra. Las
+       opciones las pinta el JS porque salen BARAJADAS: con un orden fijo, la
+       primera se lleva votos por estar primera y la prueba se contesta sola.
+       El texto de la pregunta es en pasado y sobre lo que la persona acaba de
+       hacer ("usaste", "ahorita") a propósito: preguntar por deseos —qué te
+       gustaría, usarías— produce respuestas inventadas de gente amable. -->
+  <section class="enc" id="enc" hidden aria-label="Una pregunta sobre el uso">
+    <div class="enc-h" id="encH">
+      <p class="enc-q">¿Para qué usaste la tasa ahorita?</p>
+      <button type="button" class="enc-x" id="encX" aria-label="Cerrar la pregunta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="enc-ops" id="encOps" role="group" aria-label="Opciones"></div>
+    <div class="enc-p2" id="encP2" hidden>
+      <p id="encP2Txt"></p>
+      <div class="enc-row">
+        <input id="encIn" maxlength="240" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" />
+        <button type="button" id="encSend">Enviar</button>
+      </div>
+      <p class="enc-nota" id="encNota" hidden></p>
+    </div>
+    <p class="enc-ok" id="encOk" hidden></p>
+  </section>
 
   <!-- Cruce al home. Va aquí y no en el pie a propósito: el pie se midió y da
        0,67-1,7% de CTR, así que lo que se quiere que se vea no se pone ahí.
@@ -837,6 +913,7 @@
       } else { els.bs.value = ""; els.bsSub.textContent = els.fxSub.textContent = ""; }
     }
     updateClears();
+    vigilarEncuesta();
   }
 
   // Un monto convertido con una tasa vieja tiene que decir de cuándo es, en el
@@ -1109,6 +1186,247 @@
       emitir();
     }
   }
+
+  // ---- la pregunta --------------------------------------------------------
+  // Una pregunta, una sola vez en la vida del dispositivo. Existe porque tasa
+  // lleva un año con miles de visitas al mes y a esa gente no se le ha
+  // preguntado nunca para qué usa esto. Se sabe "precios en tienda" y "cambiar
+  // efectivo" porque alguien lo dijo suelto; de ahí en adelante es suposición.
+  //
+  // CUATRO REGLAS QUE MANDAN SOBRE CUALQUIER OTRA COSA. Van escritas aquí
+  // porque son lo primero que se pierde cuando alguien vuelva a tocar esto, y
+  // porque romper una sola daña el único activo vivo por averiguar algo:
+  //   1. Aparece DESPUÉS del cálculo, nunca al abrir, y nunca tapando nada.
+  //      No es modal y no hay que cerrarla para seguir usando la app.
+  //   2. UNA VEZ por dispositivo. Si la ignoran o la cierran, no vuelve nunca.
+  //   3. Nunca en la primera visita.
+  //   4. Le CEDE el puesto al cruce comercial en vez de sumarse a él.
+  //
+  // LO QUE ESTOS NÚMEROS VAN A DECIR, y el umbral queda escrito ANTES de
+  // mirarlos porque es lo único que hace honesta la prueba: si las opciones 3 y
+  // 4 juntas no llegan al 10% de las respuestas, la puerta del negocio se
+  // cierra. Se lee a las 200 respuestas o a las tres semanas, lo que llegue
+  // primero. No se lee antes ni se ajusta el umbral después.
+  const ENC_MS = 3000;    // quietud que define "ya leyó el número"
+  const ENC_MAX = 240;
+  const ENC_TXT = {
+    1: "Para saber cuánto me cuesta algo",
+    2: "Para cambiar efectivo",
+    3: "Para cobrarle a un cliente o ponerle precio a lo que vendo",
+    4: "Para cuadrar cuentas o llevar mis números",
+    5: "Otra cosa",
+  };
+
+  // Barajado (Fisher-Yates), una vez por sesión y no en cada render. Con un
+  // orden fijo, la primera opción se lleva votos por estar primera y la prueba
+  // se contesta sola. La 3 y la 4 son la prueba entera; el resto está para que
+  // no sean la única salida.
+  const encOrden = (() => {
+    const a = [1, 2, 3, 4, 5];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  })();
+
+  // "No en la primera visita" necesita saber cuántas van, y hasta hoy la app no
+  // contaba ninguna. Empezar el contador desde cero dejaría el día uno sin un
+  // solo elegible y la muestra arrancaría con dos semanas de retraso contra un
+  // reloj de tres. Pero la huella de haber estado aquí YA existe en el teléfono
+  // de la gente: quien tiene tasas guardadas es porque abrió esto antes. Se usa
+  // esa, y el contador nuevo cubre a los que llegan de ahora en adelante.
+  //
+  // Es un proxy, no un conteo: quien borró los datos del navegador vuelve a
+  // entrar como nuevo. Sabiendo eso, sigue siendo mejor que perder dos semanas.
+  const encYaEstuvo = !!(store.pubs && Object.keys(store.pubs).length) || (store.vis || 0) >= 1;
+  store.vis = Math.min((store.vis || 0) + 1, 99); save();
+
+  const encCard = $("enc"), encCruce = document.querySelector(".cruce");
+  let encTimer = 0, encVisto = false, encModo = "";
+
+  // Mandar no puede tumbar nada, igual que medir(): si el fetch falla, si hay
+  // un bloqueador o si el navegador es viejo, la app sigue exactamente igual.
+  // La imagen es el último recurso a propósito — en teléfonos viejos, que aquí
+  // son muchos, es lo único que existe siempre.
+  function encEnviar(datos) {
+    let url;
+    try { url = "/api/encuesta?" + new URLSearchParams(datos).toString(); }
+    catch (e) { return; }
+    try {
+      if (window.fetch) { fetch(url, { method: "GET", keepalive: true, cache: "no-store" }).catch(function () {}); return; }
+    } catch (e) { /* cae a la imagen */ }
+    try { new Image().src = url; } catch (e) {}
+  }
+
+  function encElegible() { return !store.enc && encYaEstuvo; }
+
+  // Se llama al final de recompute(), así que cubre todos los caminos por los
+  // que aparece un cálculo: teclear, tocar un chip, cambiar de moneda o de día.
+  //
+  // "Hizo su cálculo" no existe como momento en esta app: la calculadora es
+  // bidireccional y en vivo, no hay botón de calcular y el otro campo se llena
+  // en cada tecla. Lo que sí existe es la QUIETUD: monto válido en los dos
+  // campos y tres segundos sin tocar nada es la firma de "ya leyó el número".
+  function vigilarEncuesta() {
+    if (!encElegible()) return;
+    clearTimeout(encTimer);
+    const bs = parse(els.bs.value), fx = parse(els.fx.value);
+    if (!(isFinite(bs) && bs > 0 && isFinite(fx) && fx > 0)) return;
+    encTimer = setTimeout(encMostrar, ENC_MS);
+  }
+
+  function encMostrar() {
+    // Una hoja abierta encima taparía la tarjeta y quemaría la única
+    // oportunidad del dispositivo sin que nadie la llegue a ver. Se reintenta
+    // en vez de gastarla.
+    if (!$("sheet").hidden || !$("dSheet").hidden) { encTimer = setTimeout(encMostrar, ENC_MS); return; }
+    if (store.enc) return;
+    store.enc = 1; save();   // desde aquí, nunca más en este teléfono
+
+    const ops = $("encOps");
+    ops.textContent = "";
+    encOrden.forEach((op, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = ENC_TXT[op];
+      // La posición en que SALIÓ viaja con la respuesta: así el sesgo de
+      // posición se verifica después con el dato, en vez de suponer que no lo hubo.
+      b.addEventListener("click", () => encResponder(op, i + 1));
+      ops.appendChild(b);
+    });
+
+    encCard.hidden = false;
+    if (encCruce) encCruce.hidden = true;   // le cede el puesto, no se suma
+    encVigilarVista();
+    encAsomar();
+  }
+
+  // La tarjeta nace por debajo del borde del teléfono: encima de ella van el
+  // encabezado, las tres pestañas, la tasa, los dos campos y los chips. Sin
+  // esto la ve quien haga scroll, o sea casi nadie, y un resultado flojo sería
+  // cero por invisible y no por desinterés — que son cosas distintas y solo una
+  // cierra la puerta del negocio.
+  //
+  // No arrastra si ya se ve, y esa condición no es cosmética: con el teclado
+  // abierto —que es el caso normal aquí, la persona acaba de teclear— mover la
+  // página de más se siente como un tirón. innerHeight ya viene encogido por el
+  // teclado en Android, así que sirve de medida de lo que hay realmente delante.
+  function encAsomar() {
+    try {
+      const r = encCard.getBoundingClientRect();
+      if (r.top < window.innerHeight - 60) return;
+      const suave = !window.matchMedia || !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      encCard.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "end" });
+    } catch (e) { /* sin scroll suave la tarjeta sigue ahí */ }
+  }
+
+  // La impresión se cuenta aparte de la respuesta, y va a la MISMA base que la
+  // respuesta y no solo a Umami. Es el denominador: sin él, un resultado flojo
+  // no se puede leer, porque "la vieron y no les interesó" y "no la vieron"
+  // darían el mismo número y solo el primero cierra la puerta.
+  function encMarcarVista() {
+    if (encVisto) return;
+    encVisto = true;
+    encEnviar({ ev: "v", ord: encOrden.join("") });
+    medir("encuesta_vista");
+  }
+
+  function encVigilarVista() {
+    if (!window.IntersectionObserver) { encMarcarVista(); return; }
+    try {
+      const io = new IntersectionObserver((ents) => {
+        for (const e of ents) if (e.isIntersecting) { encMarcarVista(); io.disconnect(); }
+      }, { threshold: .5 });
+      io.observe(encCard);
+    } catch (e) { encMarcarVista(); }
+  }
+
+  function encResponder(op, pos) {
+    encMarcarVista();
+    // La respuesta se manda YA, antes del segundo paso. Quien marque la 3 o la
+    // 4 y abandone el correo igual contó: esa es justo la respuesta que decide
+    // la prueba, y perderla por no haber dejado un correo sería absurdo.
+    encEnviar({ ev: "r", op: String(op), pos: String(pos), ord: encOrden.join("") });
+    medir("encuesta_respuesta", { op: op, pos: pos });
+    $("encOps").hidden = true;
+    $("encX").hidden = true;
+    if (op === 3 || op === 4) return encPaso2("mail");
+    if (op === 5) return encPaso2("txt");
+    encGracias();
+  }
+
+  // El paso 2 ocupa el hueco que dejan las opciones. Es un añadido: abandonarlo
+  // aquí no pierde nada, porque la respuesta ya se mandó.
+  //
+  // NO se le pone el foco al campo a propósito. Abrirle el teclado a alguien
+  // que no lo pidió, justo para pedirle el correo, es la definición de lo que
+  // esta app no hace. El campo está ahí; quien quiera, lo toca.
+  function encPaso2(modo) {
+    encModo = modo;
+    const inp = $("encIn"), nota = $("encNota");
+    if (modo === "mail") {
+      // El remate solo lo ve quien marcó la 3 o la 4, nadie más. Es verdad y no
+      // promete nada que no exista: la app de Android está en montaje. Si eso
+      // deja de ser cierto, esta línea sale de aquí antes que ninguna otra cosa.
+      $("encP2Txt").textContent = "Estoy montando la app de tasa para Android. Si quieres probarla antes que salga, déjame tu correo.";
+      inp.type = "email"; inp.inputMode = "email"; inp.autocomplete = "email";
+      inp.placeholder = "tucorreo@ejemplo.com"; inp.maxLength = 120;
+      inp.setAttribute("aria-label", "Tu correo");
+      nota.textContent = "Solo para avisarte cuando esté lista. Nada más.";
+      nota.hidden = false;
+    } else {
+      $("encP2Txt").textContent = "¿Para qué la usaste?";
+      inp.type = "text"; inp.placeholder = "En tus palabras"; inp.maxLength = ENC_MAX;
+      inp.setAttribute("aria-label", "Para qué la usaste");
+      nota.hidden = true;
+    }
+    $("encP2").hidden = false;
+    encAsomar();
+  }
+
+  function encMandarP2() {
+    const inp = $("encIn"), nota = $("encNota"), v = inp.value.trim();
+    if (encModo === "mail") {
+      // Validación mínima y de una sola pasada: aquí no se persigue a nadie.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) {
+        nota.textContent = "Revisa el correo, algo le falta.";
+        nota.hidden = false;
+        return;
+      }
+      // El correo va a su propia tabla y SIN vínculo con la respuesta. No se
+      // pierde nada: solo llega a ver este campo quien marcó la 3 o la 4, así
+      // que la lista ya nace filtrada. Guardar el vínculo no aportaría nada y
+      // convertiría una respuesta anónima en una identificada.
+      encEnviar({ ev: "m", v: v.slice(0, 120) });
+      medir("encuesta_correo");
+    } else if (v) {
+      encEnviar({ ev: "t", v: v.slice(0, ENC_MAX) });
+      medir("encuesta_texto");
+    }
+    encGracias();
+  }
+
+  function encGracias() {
+    $("encH").hidden = true; $("encOps").hidden = true; $("encP2").hidden = true;
+    const ok = $("encOk");
+    ok.textContent = "Gracias. Con esto sé para qué sirve esto de verdad.";
+    ok.hidden = false;
+  }
+
+  // Al cerrar o al terminar, el cruce NO vuelve en esta sesión. Si reapareciera
+  // se leería como cambalache —te pedí un favor y te devuelvo un anuncio, o te
+  // pedí algo, dijiste que no y te vendo— y llegaría en el peor momento posible.
+  // Vuelve solo en la visita siguiente, donde nadie nota que hubo intercambio.
+  function encCerrar() {
+    encMarcarVista();
+    encEnviar({ ev: "x" });
+    medir("encuesta_cerrada");
+    encCard.hidden = true;
+  }
+
+  $("encX").addEventListener("click", encCerrar);
+  $("encSend").addEventListener("click", encMandarP2);
+  $("encIn").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); encMandarP2(); } });
 
   // ---- histórico ----------------------------------------------------------
   // Mide si alguien quiere el histórico. NO lleva utm: cuando el destino era un

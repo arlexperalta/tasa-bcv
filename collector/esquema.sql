@@ -39,3 +39,44 @@ CREATE TABLE IF NOT EXISTS corridas (
   usdt_estado   TEXT NOT NULL,
   detalle       TEXT
 );
+
+-- ---- micro-encuesta de uso (29-ago-2026) -----------------------------------
+-- Una pregunta dentro de la app, una vez por dispositivo: "¿Para qué usaste la
+-- tasa ahorita?". No hay servidor que reciba: nginx anota la línea en su log y
+-- ingerir_encuesta.py la trae aquí. Tres tablas y no una, a propósito.
+
+-- La vista va en la MISMA tabla que la respuesta porque es su denominador. Sin
+-- ella, un resultado flojo no se puede leer: "la vieron y no les interesó" y
+-- "no la vieron" darían el mismo número, y solo el primero cierra la puerta.
+CREATE TABLE IF NOT EXISTS encuesta (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts        TEXT NOT NULL,     -- ISO del momento en que nginx lo registró
+  evento    TEXT NOT NULL,     -- vista | respuesta | cerrada
+  opcion    INTEGER,           -- 1..5, solo en 'respuesta'
+  -- En qué lugar de la lista salió la opción marcada (1..5) y el barajado
+  -- completo de esa sesión. Las opciones salen en orden aleatorio para que la
+  -- primera no se lleve votos por estar primera; esto es lo que permite
+  -- VERIFICAR después que no hubo sesgo de posición, en vez de suponerlo.
+  posicion  INTEGER,
+  orden     TEXT
+);
+
+-- Texto libre de quien marcó "Otra cosa". Va aparte porque llega en un envío
+-- distinto: la opción se manda al tocarla y el texto solo si lo escriben, así
+-- que quien marca la 5 y abandona igual cuenta como respuesta.
+CREATE TABLE IF NOT EXISTS encuesta_texto (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts     TEXT NOT NULL,
+  texto  TEXT NOT NULL
+);
+
+-- Correos de quien marcó la 3 o la 4 y quiso probar la app de Android.
+-- SIN vínculo con la respuesta, a propósito: no se pierde nada porque solo ve
+-- ese campo quien marcó 3 o 4 —la lista ya nace filtrada—, y guardar el vínculo
+-- convertiría una respuesta anónima en una identificada.
+-- UNIQUE para que un doble envío no infle la lista de testers.
+CREATE TABLE IF NOT EXISTS encuesta_correo (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts      TEXT NOT NULL,
+  correo  TEXT NOT NULL UNIQUE
+);
