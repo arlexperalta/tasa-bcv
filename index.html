@@ -1215,6 +1215,37 @@
     }
   }
 
+  // ---- abrir desde el ícono ----------------------------------------------
+  // Las instalaciones no se veían: ni Android ni iOS avisan a la página de que
+  // alguien la puso en la pantalla de inicio. Lo que sí se ve es CÓMO se abre:
+  // instalada, corre en display-mode standalone (en iOS, navigator.standalone).
+  // Se manda una vez por carga, así que la cuenta de dispositivos distintos con
+  // este evento es el número de instalaciones EN USO. Se mide en JS y no con una
+  // marca en el start_url del manifest porque las instalaciones viejas (sobre
+  // todo en iPhone) guardan la URL del día en que se instalaron y nunca verían
+  // la marca nueva.
+  //
+  // LÍMITES: es un PISO de instalaciones que se abren, no de instalaciones
+  // hechas (quien la instaló y no la abre no aparece), y cuenta dispositivos,
+  // no personas. El de Arlex está adentro. La serie empieza el 4-nov-2026.
+  // `appinstalled` solo lo dispara Chrome/Android al instalar; iOS no avisa.
+  function contarInstalada() {
+    let modo = null;
+    try {
+      if (window.navigator.standalone === true) modo = "ios";
+      else if (window.matchMedia("(display-mode: standalone)").matches) modo = "standalone";
+      else if (window.matchMedia("(display-mode: minimal-ui)").matches) modo = "minimal-ui";
+    } catch (e) { return; }
+    if (!modo) return;
+    const emitir = () => medir("abre_instalada", { modo });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", emitir, { once: true });
+    } else {
+      emitir();
+    }
+  }
+  try { window.addEventListener("appinstalled", () => medir("instalada", {})); } catch (e) {}
+
   // ---- la pregunta --------------------------------------------------------
   // Una pregunta, una sola vez en la vida del dispositivo. Existe porque tasa
   // lleva un año con miles de visitas al mes y a esa gente no se le ha
@@ -2078,6 +2109,7 @@
   });
 
   contarLlegada();
+  contarInstalada();
   cur = CURS.includes(store.cur) ? store.cur : "USD";
   applyCached(); paintCurrency(); fetchRates(false);
 
